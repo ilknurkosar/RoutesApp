@@ -1,12 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using RoutesService.Domain.Entities.Base;
 
 namespace RoutesService.Domain.Entities
 {
-    internal class RotaOnemliYerTanim
+    public class RotaOnemliYerTanim : Entity
     {
+        public int? RotaId { get; set; }
+
+        public RotaTanim? Rota { get; set; }
+
+        public string? Ad { get; set; }
+
+        public string? AciklamaDetay { get; set; }
+
+        public double? Enlem { get; set; }
+
+        public double? Boylam { get; set; }
     }
 }

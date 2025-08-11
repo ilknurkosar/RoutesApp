@@ -1,12 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace RoutesService.Domain.Entities
 {
-    internal class RotaYorumTanim
+    public class RotaYorumTanim
     {
+        public int? RotaId { get; set; }
+
+        public RotaTanim? Rota { get; set; }
+
+        public int? KullaniciId { get; set; }
+
+        public Kullanici? Kullanici { get; set; }
+
+        [Range(1, 5)]
+        public int? Puan { get; set; }
+
+        [MaxLength(500)]
+        public string? Yorum { get; set; }
     }
 }

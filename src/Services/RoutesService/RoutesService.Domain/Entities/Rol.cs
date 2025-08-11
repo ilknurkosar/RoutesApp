@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using RoutesService.Domain.Entities.Base;
 
 namespace RoutesService.Domain.Entities
 {
-    internal class Rol
+    public class Rol : Entity
     {
+        public string? Ad { get; set; }
+
+        public ICollection<Kullanici>? Kullanicilar { get; set; }
     }
 }

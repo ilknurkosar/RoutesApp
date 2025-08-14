@@ -11,6 +11,8 @@ namespace RoutesService.Domain.Entities
 
         public RotaKategoriTanim? Kategori { get; set; }
 
+        public string? Renk { get; set; }
+
         public Geometry? Geometry { get; set; }
 
         public double? Mesafe{ get; set; }

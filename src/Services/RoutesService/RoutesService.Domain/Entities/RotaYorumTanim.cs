@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using RoutesService.Domain.Entities.Base;
 
 namespace RoutesService.Domain.Entities
 {
-    public class RotaYorumTanim
+    public class RotaYorumTanim: Entity
     {
         public int? RotaId { get; set; }
 

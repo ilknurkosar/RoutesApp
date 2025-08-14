@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using RoutesService.Domain.Entities.Base;
+﻿using RoutesService.Domain.Entities.Base;
 
 namespace RoutesService.Domain.Entities
 {

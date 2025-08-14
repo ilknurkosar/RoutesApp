@@ -6,10 +6,9 @@ namespace RoutesService.Domain.Entities
     {
         public string? Ad { get; set; }
 
-        public ICollection<Kullanici>? Kullanicilar { get; set; }
-       
-        public Rol() { 
-         Kullanicilar = new List<Kullanici>();
-        }
+        public ICollection<KullaniciRolleri>? KullaniciRolleri { get; set; }
+        
+        public ICollection<RolIzinleri>? RolIzinleri { get; set; }
+
     }
 }

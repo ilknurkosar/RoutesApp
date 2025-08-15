@@ -119,8 +119,5 @@ namespace RoutesService.API.Data
                 .OnDelete(DeleteBehavior.Cascade); 
 
         }
-        public DbSet<RoutesService.Domain.Entities.Base.Entity> Entity { get; set; } = default!;
-
     }
-
 }

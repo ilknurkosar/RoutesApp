@@ -1,6 +1,8 @@
-﻿namespace RoutesService.Domain.Entities
+﻿using RoutesService.Domain.Entities.Base;
+
+namespace RoutesService.Domain.Entities
 {
-    public class KullaniciRolleri
+    public class KullaniciRolleri: Entity
     {
         public int KullaniciId { get; set; }
         public Kullanici? Kullanici { get; set; }

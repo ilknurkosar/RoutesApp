@@ -13,8 +13,8 @@ using RoutesService.API.Data;
 namespace RoutesService.API.Migrations
 {
     [DbContext(typeof(RoutesDbContext))]
-    [Migration("20250813122732_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250814122929_AddRolePermissionSystem")]
+    partial class AddRolePermissionSystem
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,6 +26,22 @@ namespace RoutesService.API.Migrations
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("RoutesService.Domain.Entities.Izin", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Izinler");
+                });
 
             modelBuilder.Entity("RoutesService.Domain.Entities.Kullanici", b =>
                 {
@@ -94,6 +110,21 @@ namespace RoutesService.API.Migrations
                     b.HasIndex("RolId");
 
                     b.ToTable("Kullanicilar");
+                });
+
+            modelBuilder.Entity("RoutesService.Domain.Entities.KullaniciRolleri", b =>
+                {
+                    b.Property<int>("KullaniciId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("KullaniciId", "RolId");
+
+                    b.HasIndex("RolId");
+
+                    b.ToTable("KullaniciRolleri");
                 });
 
             modelBuilder.Entity("RoutesService.Domain.Entities.KurumTanim", b =>
@@ -184,45 +215,6 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("GuncelleyenKullaniciId")
                         .HasColumnType("text");
 
-                    b.Property<bool?>("KurumEklemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("KurumGuncellemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("KurumSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RolDuzenlemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RolSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaEklemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaGuncellemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaKategoriGuncellemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaKategoriSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaYorumEklemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaYorumGuncellemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("RotaYorumSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("SilenKullaniciId")
                         .HasColumnType("text");
 
@@ -232,21 +224,24 @@ namespace RoutesService.API.Migrations
                     b.Property<DateTime?>("SilinmeTarihi")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool?>("YetkiAlaniEklemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("YetkiAlaniGoruntulemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("YetkiAlaniGuncellemeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool?>("YetkiAlaniSilmeYetkisiVarMi")
-                        .HasColumnType("boolean");
-
                     b.HasKey("Id");
 
                     b.ToTable("Roller");
+                });
+
+            modelBuilder.Entity("RoutesService.Domain.Entities.RolIzinleri", b =>
+                {
+                    b.Property<int>("RolId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IzinId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("RolId", "IzinId");
+
+                    b.HasIndex("IzinId");
+
+                    b.ToTable("RolIzinleri");
                 });
 
             modelBuilder.Entity("RoutesService.Domain.Entities.RotaKategoriTanim", b =>
@@ -598,6 +593,44 @@ namespace RoutesService.API.Migrations
                     b.Navigation("Rol");
                 });
 
+            modelBuilder.Entity("RoutesService.Domain.Entities.KullaniciRolleri", b =>
+                {
+                    b.HasOne("RoutesService.Domain.Entities.Kullanici", "Kullanici")
+                        .WithMany("KullaniciRolleri")
+                        .HasForeignKey("KullaniciId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RoutesService.Domain.Entities.Rol", "Rol")
+                        .WithMany("KullaniciRolleri")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Kullanici");
+
+                    b.Navigation("Rol");
+                });
+
+            modelBuilder.Entity("RoutesService.Domain.Entities.RolIzinleri", b =>
+                {
+                    b.HasOne("RoutesService.Domain.Entities.Izin", "Izin")
+                        .WithMany("RolIzinleri")
+                        .HasForeignKey("IzinId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RoutesService.Domain.Entities.Rol", "Rol")
+                        .WithMany("RolIzinleri")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Izin");
+
+                    b.Navigation("Rol");
+                });
+
             modelBuilder.Entity("RoutesService.Domain.Entities.RotaOnemliYerTanim", b =>
                 {
                     b.HasOne("RoutesService.Domain.Entities.RotaTanim", "Rota")
@@ -653,8 +686,15 @@ namespace RoutesService.API.Migrations
                     b.Navigation("Kurum");
                 });
 
+            modelBuilder.Entity("RoutesService.Domain.Entities.Izin", b =>
+                {
+                    b.Navigation("RolIzinleri");
+                });
+
             modelBuilder.Entity("RoutesService.Domain.Entities.Kullanici", b =>
                 {
+                    b.Navigation("KullaniciRolleri");
+
                     b.Navigation("Yorumlar");
                 });
 
@@ -665,7 +705,11 @@ namespace RoutesService.API.Migrations
 
             modelBuilder.Entity("RoutesService.Domain.Entities.Rol", b =>
                 {
+                    b.Navigation("KullaniciRolleri");
+
                     b.Navigation("Kullanicilar");
+
+                    b.Navigation("RolIzinleri");
                 });
 
             modelBuilder.Entity("RoutesService.Domain.Entities.RotaKategoriTanim", b =>

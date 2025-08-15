@@ -22,6 +22,9 @@ namespace RoutesService.Domain.Entities
         [JsonIgnore]
         public string? SifreHash { get; set; }
 
+        public int? RolId { get; set; }
+        public Rol? Rol { get; set; }
+
         public ICollection<KullaniciRolleri>? KullaniciRolleri { get; set; }
 
         public ICollection<RotaYorumTanim>? Yorumlar { get; set; }

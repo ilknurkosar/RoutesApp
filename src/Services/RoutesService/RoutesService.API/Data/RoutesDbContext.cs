@@ -15,7 +15,13 @@ namespace RoutesService.API.Data
 
         public DbSet<Rol> Roller { get; set; }
 
+        public DbSet<Izin> Izinler { get; set; }
+
+        public DbSet<KullaniciRolleri> KullaniciRolleri { get; set; }
+
         public DbSet<RotaTanim> Rotalar { get; set; }
+
+        public DbSet<RolIzinleri> RolIzinleri { get; set; }
 
         public DbSet<RotaKategoriTanim> RotaKategoriler { get; set; }
 
@@ -51,6 +57,32 @@ namespace RoutesService.API.Data
                 .HasOne(k => k.Rol)
                 .WithMany(r => r.Kullanicilar)
                 .HasForeignKey(k => k.RolId);
+
+            modelBuilder.Entity<KullaniciRolleri>()
+               .HasKey(kr => new { kr.KullaniciId, kr.RolId }); // Composite key
+
+            modelBuilder.Entity<KullaniciRolleri>()
+                .HasOne(kr => kr.Kullanici)
+                .WithMany(k => k.KullaniciRolleri)
+                .HasForeignKey(kr => kr.KullaniciId);
+
+            modelBuilder.Entity<KullaniciRolleri>()
+                .HasOne(kr => kr.Rol)
+                .WithMany(r => r.KullaniciRolleri)
+                .HasForeignKey(kr => kr.RolId);
+
+            modelBuilder.Entity<RolIzinleri>()
+               .HasKey(ri => new { ri.RolId, ri.IzinId }); // Composite key
+
+            modelBuilder.Entity<RolIzinleri>()
+                .HasOne(ri => ri.Rol)
+                .WithMany(r => r.RolIzinleri)
+                .HasForeignKey(ri => ri.RolId);
+
+            modelBuilder.Entity<RolIzinleri>()
+                .HasOne(ri => ri.Izin)
+                .WithMany(i => i.RolIzinleri)
+                .HasForeignKey(ri => ri.IzinId);
 
             //many to many olmalı mı?
             modelBuilder.Entity<RotaTanim>()

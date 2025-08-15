@@ -8,13 +8,26 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace RoutesService.API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class AddRolePermissionSystem : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:PostgresExtension:postgis", ",,");
+
+            migrationBuilder.CreateTable(
+                name: "Izinler",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Izinler", x => x.Id);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Kurumlar",
@@ -49,23 +62,6 @@ namespace RoutesService.API.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Ad = table.Column<string>(type: "text", nullable: true),
-                    RotaEklemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaGuncellemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RolDuzenlemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RolSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaYorumSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaYorumEklemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaYorumGuncellemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaKategoriGuncellemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    RotaKategoriSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    YetkiAlaniEklemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    YetkiAlaniGuncellemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    YetkiAlaniSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    YetkiAlaniGoruntulemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    KurumEklemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    KurumGuncellemeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
-                    KurumSilmeYetkisiVarMi = table.Column<bool>(type: "boolean", nullable: true),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -168,6 +164,30 @@ namespace RoutesService.API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RolIzinleri",
+                columns: table => new
+                {
+                    RolId = table.Column<int>(type: "integer", nullable: false),
+                    IzinId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RolIzinleri", x => new { x.RolId, x.IzinId });
+                    table.ForeignKey(
+                        name: "FK_RolIzinleri_Izinler_IzinId",
+                        column: x => x.IzinId,
+                        principalTable: "Izinler",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RolIzinleri_Roller_RolId",
+                        column: x => x.RolId,
+                        principalTable: "Roller",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Rotalar",
                 columns: table => new
                 {
@@ -197,6 +217,30 @@ namespace RoutesService.API.Migrations
                         column: x => x.KategoriId,
                         principalTable: "RotaKategoriler",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "KullaniciRolleri",
+                columns: table => new
+                {
+                    KullaniciId = table.Column<int>(type: "integer", nullable: false),
+                    RolId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_KullaniciRolleri", x => new { x.KullaniciId, x.RolId });
+                    table.ForeignKey(
+                        name: "FK_KullaniciRolleri_Kullanicilar_KullaniciId",
+                        column: x => x.KullaniciId,
+                        principalTable: "Kullanicilar",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_KullaniciRolleri_Roller_RolId",
+                        column: x => x.RolId,
+                        principalTable: "Roller",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -306,6 +350,16 @@ namespace RoutesService.API.Migrations
                 column: "RolId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_KullaniciRolleri_RolId",
+                table: "KullaniciRolleri",
+                column: "RolId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RolIzinleri_IzinId",
+                table: "RolIzinleri",
+                column: "IzinId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Rotalar_KategoriId",
                 table: "Rotalar",
                 column: "KategoriId");
@@ -340,6 +394,12 @@ namespace RoutesService.API.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "KullaniciRolleri");
+
+            migrationBuilder.DropTable(
+                name: "RolIzinleri");
+
+            migrationBuilder.DropTable(
                 name: "RotaOnemliYerler");
 
             migrationBuilder.DropTable(
@@ -350,6 +410,9 @@ namespace RoutesService.API.Migrations
 
             migrationBuilder.DropTable(
                 name: "YetkiAlanlari");
+
+            migrationBuilder.DropTable(
+                name: "Izinler");
 
             migrationBuilder.DropTable(
                 name: "Kullanicilar");

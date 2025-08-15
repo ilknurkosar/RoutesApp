@@ -35,6 +35,8 @@ namespace RoutesService.API.Data
 
         public DbSet<YetkiAlaniTanim> YetkiAlanlari { get; set; }
 
+        public DbSet<RotaKategoriAtama> RotaKategoriAtama { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
@@ -52,11 +54,6 @@ namespace RoutesService.API.Data
                         .HasDefaultValueSql("NOW()");
                 }
             }
-
-            modelBuilder.Entity<Kullanici>()
-                .HasOne(k => k.Rol)
-                .WithMany(r => r.Kullanicilar)
-                .HasForeignKey(k => k.RolId);
 
             modelBuilder.Entity<KullaniciRolleri>()
                .HasKey(kr => new { kr.KullaniciId, kr.RolId }); // Composite key
@@ -84,13 +81,20 @@ namespace RoutesService.API.Data
                 .WithMany(i => i.RolIzinleri)
                 .HasForeignKey(ri => ri.IzinId);
 
-            //many to many olmalı mı?
-            modelBuilder.Entity<RotaTanim>()
-                .HasOne(rt => rt.Kategori)
-                .WithMany(k => k.Rotalar)
-                .HasForeignKey(rt => rt.KategoriId);
-            
-           modelBuilder.Entity<RotaOnemliYerTanim>()
+            modelBuilder.Entity<RotaKategoriAtama>()
+                .HasKey(rk => new { rk.RotaId, rk.KategoriId });
+
+            modelBuilder.Entity<RotaKategoriAtama>()
+                .HasOne(rk => rk.Rota)
+                .WithMany(r => r.RotaKategoriler)
+                .HasForeignKey(rk => rk.RotaId);
+
+            modelBuilder.Entity<RotaKategoriAtama>()
+                .HasOne(rk => rk.Kategori)
+                .WithMany(k => k.RotaKategoriler)
+                .HasForeignKey(rk => rk.KategoriId);
+
+            modelBuilder.Entity<RotaOnemliYerTanim>()
                 .HasOne(r => r.Rota)
                 .WithMany(k => k.OnemliYerler)
                 .HasForeignKey(r => r.RotaId)
@@ -115,6 +119,7 @@ namespace RoutesService.API.Data
                 .OnDelete(DeleteBehavior.Cascade); 
 
         }
+        public DbSet<RoutesService.Domain.Entities.Base.Entity> Entity { get; set; } = default!;
 
     }
 

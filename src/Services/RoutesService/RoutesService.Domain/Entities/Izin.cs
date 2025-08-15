@@ -1,6 +1,8 @@
-﻿namespace RoutesService.Domain.Entities
+﻿using RoutesService.Domain.Entities.Base;
+
+namespace RoutesService.Domain.Entities
 {
-    public class Izin
+    public class Izin: Entity
     {   
         public string? Name { get; set; }
 

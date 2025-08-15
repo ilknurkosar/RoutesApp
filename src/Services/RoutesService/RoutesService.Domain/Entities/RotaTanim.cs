@@ -7,10 +7,6 @@ namespace RoutesService.Domain.Entities
     {
         public string? Adi { get; set; }
 
-        public int? KategoriId { get; set; }
-
-        public RotaKategoriTanim? Kategori { get; set; }
-
         public string? Renk { get; set; }
 
         public Geometry? Geometry { get; set; }
@@ -18,6 +14,8 @@ namespace RoutesService.Domain.Entities
         public double? Mesafe{ get; set; }
 
         public int? TahminiSureDakika{ get; set; }
+
+        public ICollection<RotaKategoriAtama> RotaKategoriler { get; set; } = new List<RotaKategoriAtama>();
 
         public ICollection<RotaResimTanim>? Resimler { get; set; }
 

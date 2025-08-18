@@ -18,7 +18,6 @@ namespace RoutesService.Domain.Entities
 
         public string? Sifre { get; set; }
 
-        [Required]
         [JsonIgnore]
         public string? SifreHash { get; set; }
 

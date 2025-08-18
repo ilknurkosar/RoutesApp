@@ -6,48 +6,32 @@ namespace RoutesService.API.Data
 {
     public class RoutesDbContext : DbContext
     {
-
         public RoutesDbContext(DbContextOptions<RoutesDbContext> options) : base(options)
         {
         }
 
         public DbSet<Kullanici> Kullanicilar { get; set; }
-
         public DbSet<Rol> Roller { get; set; }
-
         public DbSet<Izin> Izinler { get; set; }
-
         public DbSet<KullaniciRolleri> KullaniciRolleri { get; set; }
-
         public DbSet<RotaTanim> Rotalar { get; set; }
-
         public DbSet<RolIzinleri> RolIzinleri { get; set; }
-
         public DbSet<RotaKategoriTanim> RotaKategoriler { get; set; }
-
         public DbSet<RotaOnemliYerTanim> RotaOnemliYerler { get; set; }
-
         public DbSet<RotaResimTanim> RotaResimler { get; set; }
-
         public DbSet<RotaYorumTanim> RotaYorumlar { get; set; }
-
         public DbSet<KurumTanim> Kurumlar { get; set; }
-
         public DbSet<YetkiAlaniTanim> YetkiAlanlari { get; set; }
-
         public DbSet<RotaKategoriAtama> RotaKategoriAtama { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
             base.OnModelCreating(modelBuilder);
 
-            //Base Entity için ortak yapı
+            // Base Entity için ortak yapı
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-            { 
-
-                if(typeof(Entity).IsAssignableFrom(entityType.ClrType)) //Sadece Entity classından türeyen entityler
-
+            {
+                if (typeof(Entity).IsAssignableFrom(entityType.ClrType))
                 {
                     modelBuilder.Entity(entityType.ClrType)
                         .Property<DateTime?>("EklenmeTarihi")
@@ -55,8 +39,9 @@ namespace RoutesService.API.Data
                 }
             }
 
+            // Composite key ve ilişkiler
             modelBuilder.Entity<KullaniciRolleri>()
-               .HasKey(kr => new { kr.KullaniciId, kr.RolId }); // Composite key
+                .HasKey(kr => new { kr.KullaniciId, kr.RolId });
 
             modelBuilder.Entity<KullaniciRolleri>()
                 .HasOne(kr => kr.Kullanici)
@@ -69,7 +54,7 @@ namespace RoutesService.API.Data
                 .HasForeignKey(kr => kr.RolId);
 
             modelBuilder.Entity<RolIzinleri>()
-               .HasKey(ri => new { ri.RolId, ri.IzinId }); // Composite key
+                .HasKey(ri => new { ri.RolId, ri.IzinId });
 
             modelBuilder.Entity<RolIzinleri>()
                 .HasOne(ri => ri.Rol)
@@ -94,30 +79,23 @@ namespace RoutesService.API.Data
                 .WithMany(k => k.RotaKategoriler)
                 .HasForeignKey(rk => rk.KategoriId);
 
-            modelBuilder.Entity<RotaOnemliYerTanim>()
-                .HasOne(r => r.Rota)
-                .WithMany(k => k.OnemliYerler)
-                .HasForeignKey(r => r.RotaId)
-                .OnDelete(DeleteBehavior.Cascade); // Rota silindiğinde ilgili önemli yerler de silinsin
-
             modelBuilder.Entity<RotaResimTanim>()
                 .HasOne(r => r.Rota)
                 .WithMany(k => k.Resimler)
                 .HasForeignKey(r => r.RotaId)
-                .OnDelete(DeleteBehavior.Cascade); // Rota silindiğinde ilgili resimler de silinsin
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RotaYorumTanim>()
-                .HasOne(r=> r.Rota)
+                .HasOne(r => r.Rota)
                 .WithMany(k => k.Yorumlar)
                 .HasForeignKey(r => r.RotaId)
-                .OnDelete(DeleteBehavior.Cascade); 
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<YetkiAlaniTanim>()
-                .HasOne(r=>r.Kurum)
+                .HasOne(r => r.Kurum)
                 .WithMany(k => k.YetkiAlanlari)
                 .HasForeignKey(r => r.KurumId)
-                .OnDelete(DeleteBehavior.Cascade); 
-
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

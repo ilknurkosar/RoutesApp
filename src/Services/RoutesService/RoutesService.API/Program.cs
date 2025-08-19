@@ -3,25 +3,34 @@ using RoutesService.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// PostgreSQL + NetTopologySuite
 builder.Services.AddDbContext<RoutesDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
                          o => o.UseNetTopologySuite()));
 
+// Controller + JSON ayarları
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        
+        // Gerekirse burada JSON formatlama yapılabilir
     });
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// 🔑 CORS ekleme (React bağlanabilsin diye)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy => policy.WithOrigins("http://localhost:3000")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+});
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen();
-
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Swagger (sadece Development)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -30,11 +39,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// CORS middleware
+app.UseCors("AllowReactApp");
+
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Seed data'y� uygula
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -43,7 +54,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Console.WriteLine($" Hata: {ex.Message}");
+        Console.WriteLine($"❌ Hata: {ex.Message}");
         throw;
     }
 }

@@ -168,9 +168,10 @@ namespace RoutesService.API.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Ad = table.Column<string>(type: "text", nullable: true),
-                    Aciklama = table.Column<string>(type: "text", nullable: true),
+                    Renk = table.Column<string>(type: "text", nullable: true),
                     Geometry = table.Column<Geometry>(type: "geometry", nullable: true),
                     KurumId = table.Column<int>(type: "integer", nullable: true),
+                    Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
                     EkleyenKullaniciId = table.Column<string>(type: "text", nullable: true),
@@ -305,8 +306,7 @@ namespace RoutesService.API.Migrations
                     RotaId = table.Column<int>(type: "integer", nullable: true),
                     Ad = table.Column<string>(type: "text", nullable: true),
                     AciklamaDetay = table.Column<string>(type: "text", nullable: true),
-                    Enlem = table.Column<double>(type: "double precision", nullable: true),
-                    Boylam = table.Column<double>(type: "double precision", nullable: true),
+                    Geometry = table.Column<Geometry>(type: "geometry", nullable: true),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -324,8 +324,7 @@ namespace RoutesService.API.Migrations
                         name: "FK_RotaOnemliYerler_Rotalar_RotaId",
                         column: x => x.RotaId,
                         principalTable: "Rotalar",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(

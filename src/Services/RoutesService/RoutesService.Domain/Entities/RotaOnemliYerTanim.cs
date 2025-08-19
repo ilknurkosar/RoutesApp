@@ -1,4 +1,5 @@
-﻿using RoutesService.Domain.Entities.Base;
+﻿using NetTopologySuite.Geometries;
+using RoutesService.Domain.Entities.Base;
 
 namespace RoutesService.Domain.Entities
 {
@@ -12,8 +13,6 @@ namespace RoutesService.Domain.Entities
 
         public string? AciklamaDetay { get; set; }
 
-        public double? Enlem { get; set; }
-
-        public double? Boylam { get; set; }
+        public Geometry? Geometry { get; set; }
     }
 }

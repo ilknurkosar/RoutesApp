@@ -452,9 +452,6 @@ namespace RoutesService.API.Migrations
                     b.Property<bool?>("AktifMi")
                         .HasColumnType("boolean");
 
-                    b.Property<double?>("Boylam")
-                        .HasColumnType("double precision");
-
                     b.Property<DateTime?>("EklenmeTarihi")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -463,8 +460,8 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("EkleyenKullaniciId")
                         .HasColumnType("text");
 
-                    b.Property<double?>("Enlem")
-                        .HasColumnType("double precision");
+                    b.Property<Geometry>("Geometry")
+                        .HasColumnType("geometry");
 
                     b.Property<DateTime?>("GuncellenmeTarihi")
                         .HasColumnType("timestamp with time zone");
@@ -706,6 +703,9 @@ namespace RoutesService.API.Migrations
                     b.Property<int?>("KurumId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Renk")
+                        .HasColumnType("text");
+
                     b.Property<string>("SilenKullaniciId")
                         .HasColumnType("text");
 
@@ -783,8 +783,7 @@ namespace RoutesService.API.Migrations
                 {
                     b.HasOne("RoutesService.Domain.Entities.RotaTanim", "Rota")
                         .WithMany("OnemliYerler")
-                        .HasForeignKey("RotaId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("RotaId");
 
                     b.Navigation("Rota");
                 });

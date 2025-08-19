@@ -40,11 +40,6 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<RoutesDbContext>();
-
-        // Seed data'yý ekle
-        await SeedData.SeedAsync(context);
-
-        Console.WriteLine(" Seed data baþarýyla eklendi!");
     }
     catch (Exception ex)
     {

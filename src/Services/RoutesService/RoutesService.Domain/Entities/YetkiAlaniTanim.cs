@@ -7,7 +7,7 @@ namespace RoutesService.Domain.Entities
     {
         public string? Ad { get; set; }
 
-        public string? Aciklama { get; set; }
+        public string? Renk { get; set; }
 
         public Geometry? Geometry { get; set; }
 

@@ -109,10 +109,6 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("Sifre")
                         .HasColumnType("text");
 
-                    b.Property<string>("SifreHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("SilenKullaniciId")
                         .HasColumnType("text");
 
@@ -135,11 +131,11 @@ namespace RoutesService.API.Migrations
 
             modelBuilder.Entity("RoutesService.Domain.Entities.KullaniciRolleri", b =>
                 {
-                    b.Property<int>("KullaniciId")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<int>("RolId")
-                        .HasColumnType("integer");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Aciklama")
                         .HasColumnType("text");
@@ -161,7 +157,10 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("GuncelleyenKullaniciId")
                         .HasColumnType("text");
 
-                    b.Property<int>("Id")
+                    b.Property<int>("KullaniciId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RolId")
                         .HasColumnType("integer");
 
                     b.Property<string>("SilenKullaniciId")
@@ -173,7 +172,9 @@ namespace RoutesService.API.Migrations
                     b.Property<DateTime?>("SilinmeTarihi")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("KullaniciId", "RolId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("KullaniciId");
 
                     b.HasIndex("RolId");
 
@@ -284,11 +285,11 @@ namespace RoutesService.API.Migrations
 
             modelBuilder.Entity("RoutesService.Domain.Entities.RolIzinleri", b =>
                 {
-                    b.Property<int>("RolId")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<int>("IzinId")
-                        .HasColumnType("integer");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Aciklama")
                         .HasColumnType("text");
@@ -310,7 +311,10 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("GuncelleyenKullaniciId")
                         .HasColumnType("text");
 
-                    b.Property<int>("Id")
+                    b.Property<int>("IzinId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RolId")
                         .HasColumnType("integer");
 
                     b.Property<string>("SilenKullaniciId")
@@ -322,20 +326,22 @@ namespace RoutesService.API.Migrations
                     b.Property<DateTime?>("SilinmeTarihi")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("RolId", "IzinId");
+                    b.HasKey("Id");
 
                     b.HasIndex("IzinId");
+
+                    b.HasIndex("RolId");
 
                     b.ToTable("RolIzinleri");
                 });
 
             modelBuilder.Entity("RoutesService.Domain.Entities.RotaKategoriAtama", b =>
                 {
-                    b.Property<int>("RotaId")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    b.Property<int>("KategoriId")
-                        .HasColumnType("integer");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Aciklama")
                         .HasColumnType("text");
@@ -357,7 +363,10 @@ namespace RoutesService.API.Migrations
                     b.Property<string>("GuncelleyenKullaniciId")
                         .HasColumnType("text");
 
-                    b.Property<int>("Id")
+                    b.Property<int>("KategoriId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RotaId")
                         .HasColumnType("integer");
 
                     b.Property<string>("SilenKullaniciId")
@@ -369,9 +378,11 @@ namespace RoutesService.API.Migrations
                     b.Property<DateTime?>("SilinmeTarihi")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("RotaId", "KategoriId");
+                    b.HasKey("Id");
 
                     b.HasIndex("KategoriId");
+
+                    b.HasIndex("RotaId");
 
                     b.ToTable("RotaKategoriAtama");
                 });

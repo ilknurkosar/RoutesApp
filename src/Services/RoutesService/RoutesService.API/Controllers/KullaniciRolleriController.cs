@@ -20,14 +20,20 @@ namespace RoutesService.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<KullaniciRolleri>>> GetKullaniciRolleri()
         {
-            return await _context.KullaniciRolleri.ToListAsync();
+            return await _context.KullaniciRolleri
+                .Include(kr => kr.Kullanici) // Kullanıcı bilgilerini yükle
+                .Include(kr => kr.Rol) // Rol bilgilerini yükle
+                .ToListAsync();
         }
 
         // GET: api/KullaniciRolleri/5
         [HttpGet("{id}")]
         public async Task<ActionResult<KullaniciRolleri>> GetKullaniciRolleri(int id)
         {
-            var kullaniciRolleri = await _context.KullaniciRolleri.FindAsync(id);
+            var kullaniciRolleri = await _context.KullaniciRolleri
+                .Include(kr => kr.Kullanici)
+                .Include(kr => kr.Rol)
+                .FirstOrDefaultAsync(kr => kr.Id == id);
 
             if (kullaniciRolleri == null)
             {
@@ -38,11 +44,10 @@ namespace RoutesService.API.Controllers
         }
 
         // PUT: api/KullaniciRolleri/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutKullaniciRolleri(int id, KullaniciRolleri kullaniciRolleri)
         {
-            if (id != kullaniciRolleri.KullaniciId)
+            if (id != kullaniciRolleri.Id)
             {
                 return BadRequest();
             }
@@ -69,28 +74,13 @@ namespace RoutesService.API.Controllers
         }
 
         // POST: api/KullaniciRolleri
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<KullaniciRolleri>> PostKullaniciRolleri(KullaniciRolleri kullaniciRolleri)
         {
             _context.KullaniciRolleri.Add(kullaniciRolleri);
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (KullaniciRolleriExists(kullaniciRolleri.KullaniciId))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetKullaniciRolleri", new { id = kullaniciRolleri.KullaniciId }, kullaniciRolleri);
+            return CreatedAtAction("GetKullaniciRolleri", new { id = kullaniciRolleri.Id }, kullaniciRolleri);
         }
 
         // DELETE: api/KullaniciRolleri/5
@@ -111,7 +101,7 @@ namespace RoutesService.API.Controllers
 
         private bool KullaniciRolleriExists(int id)
         {
-            return _context.KullaniciRolleri.Any(e => e.KullaniciId == id);
+            return _context.KullaniciRolleri.Any(e => e.Id == id);
         }
     }
 }

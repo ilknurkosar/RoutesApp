@@ -8,6 +8,7 @@ namespace RoutesService.Domain.Entities
         public Kullanici? Kullanici { get; set; }
 
         public int RolId { get; set; }
+        
         public Rol? Rol { get; set; }
     }
 }

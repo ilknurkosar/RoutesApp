@@ -56,7 +56,7 @@ namespace RoutesService.API.Data
             }
 
             modelBuilder.Entity<KullaniciRolleri>()
-               .HasKey(kr => new { kr.KullaniciId, kr.RolId }); // Composite key
+               .HasKey(kr => kr.Id); 
 
             modelBuilder.Entity<KullaniciRolleri>()
                 .HasOne(kr => kr.Kullanici)
@@ -69,7 +69,7 @@ namespace RoutesService.API.Data
                 .HasForeignKey(kr => kr.RolId);
 
             modelBuilder.Entity<RolIzinleri>()
-               .HasKey(ri => new { ri.RolId, ri.IzinId }); // Composite key
+               .HasKey(ri => ri.Id); 
 
             modelBuilder.Entity<RolIzinleri>()
                 .HasOne(ri => ri.Rol)
@@ -82,7 +82,7 @@ namespace RoutesService.API.Data
                 .HasForeignKey(ri => ri.IzinId);
 
             modelBuilder.Entity<RotaKategoriAtama>()
-                .HasKey(rk => new { rk.RotaId, rk.KategoriId });
+    .HasKey(rk => rk.Id);
 
             modelBuilder.Entity<RotaKategoriAtama>()
                 .HasOne(rk => rk.Rota)

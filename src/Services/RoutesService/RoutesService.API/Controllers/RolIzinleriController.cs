@@ -25,14 +25,20 @@ namespace RoutesService.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RolIzinleri>>> GetRolIzinleri()
         {
-            return await _context.RolIzinleri.ToListAsync();
+            return await _context.RolIzinleri
+                .Include(ri => ri.Rol) // Rol bilgilerini yükle
+                .Include(ri => ri.Izin) // İzin bilgilerini yükle
+                .ToListAsync();
         }
 
         // GET: api/RolIzinleri/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RolIzinleri>> GetRolIzinleri(int id)
         {
-            var rolIzinleri = await _context.RolIzinleri.FindAsync(id);
+            var rolIzinleri = await _context.RolIzinleri
+                .Include(ri => ri.Rol)
+                .Include(ri => ri.Izin)
+                .FirstOrDefaultAsync(ri => ri.Id == id);
 
             if (rolIzinleri == null)
             {
@@ -47,7 +53,7 @@ namespace RoutesService.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutRolIzinleri(int id, RolIzinleri rolIzinleri)
         {
-            if (id != rolIzinleri.RolId)
+            if (id != rolIzinleri.Id)
             {
                 return BadRequest();
             }
@@ -79,23 +85,9 @@ namespace RoutesService.API.Controllers
         public async Task<ActionResult<RolIzinleri>> PostRolIzinleri(RolIzinleri rolIzinleri)
         {
             _context.RolIzinleri.Add(rolIzinleri);
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (RolIzinleriExists(rolIzinleri.RolId))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetRolIzinleri", new { id = rolIzinleri.RolId }, rolIzinleri);
+            return CreatedAtAction("GetRolIzinleri", new { id = rolIzinleri.Id }, rolIzinleri);
         }
 
         // DELETE: api/RolIzinleri/5
@@ -116,7 +108,7 @@ namespace RoutesService.API.Controllers
 
         private bool RolIzinleriExists(int id)
         {
-            return _context.RolIzinleri.Any(e => e.RolId == id);
+            return _context.RolIzinleri.Any(e => e.Id == id);
         }
     }
 }

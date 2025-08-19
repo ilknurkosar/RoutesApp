@@ -25,32 +25,31 @@ namespace RoutesService.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RotaKategoriAtama>>> GetRotaKategoriAtama()
         {
-            return await _context.RotaKategoriAtama.ToListAsync();
+            return await _context.RotaKategoriAtama
+                .Include(rk => rk.Rota)
+                .Include(rk => rk.Kategori)
+                .ToListAsync();
         }
 
-        // GET: api/RotaKategoriAtama/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RotaKategoriAtama>> GetRotaKategoriAtama(int id)
         {
-            var rotaKategoriAtama = await _context.RotaKategoriAtama.FindAsync(id);
+            var rotaKategoriAtama = await _context.RotaKategoriAtama
+                .Include(rk => rk.Rota)
+                .Include(rk => rk.Kategori)
+                .FirstOrDefaultAsync(rk => rk.Id == id);
 
             if (rotaKategoriAtama == null)
-            {
                 return NotFound();
-            }
 
             return rotaKategoriAtama;
         }
 
-        // PUT: api/RotaKategoriAtama/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutRotaKategoriAtama(int id, RotaKategoriAtama rotaKategoriAtama)
         {
-            if (id != rotaKategoriAtama.RotaId)
-            {
+            if (id != rotaKategoriAtama.Id)
                 return BadRequest();
-            }
 
             _context.Entry(rotaKategoriAtama).State = EntityState.Modified;
 
@@ -61,52 +60,29 @@ namespace RoutesService.API.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (!RotaKategoriAtamaExists(id))
-                {
                     return NotFound();
-                }
                 else
-                {
                     throw;
-                }
             }
 
             return NoContent();
         }
 
-        // POST: api/RotaKategoriAtama
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<RotaKategoriAtama>> PostRotaKategoriAtama(RotaKategoriAtama rotaKategoriAtama)
         {
             _context.RotaKategoriAtama.Add(rotaKategoriAtama);
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (RotaKategoriAtamaExists(rotaKategoriAtama.RotaId))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetRotaKategoriAtama", new { id = rotaKategoriAtama.RotaId }, rotaKategoriAtama);
+            return CreatedAtAction("GetRotaKategoriAtama", new { id = rotaKategoriAtama.Id }, rotaKategoriAtama);
         }
 
-        // DELETE: api/RotaKategoriAtama/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRotaKategoriAtama(int id)
         {
             var rotaKategoriAtama = await _context.RotaKategoriAtama.FindAsync(id);
             if (rotaKategoriAtama == null)
-            {
                 return NotFound();
-            }
 
             _context.RotaKategoriAtama.Remove(rotaKategoriAtama);
             await _context.SaveChangesAsync();
@@ -116,7 +92,8 @@ namespace RoutesService.API.Controllers
 
         private bool RotaKategoriAtamaExists(int id)
         {
-            return _context.RotaKategoriAtama.Any(e => e.RotaId == id);
+            return _context.RotaKategoriAtama.Any(e => e.Id == id);
+
         }
     }
 }

@@ -50,7 +50,6 @@ namespace RoutesService.API.Migrations
                     Email = table.Column<string>(type: "text", nullable: true),
                     Telefon = table.Column<string>(type: "text", nullable: true),
                     Sifre = table.Column<string>(type: "text", nullable: true),
-                    SifreHash = table.Column<string>(type: "text", nullable: false),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -196,9 +195,10 @@ namespace RoutesService.API.Migrations
                 name: "KullaniciRolleri",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     KullaniciId = table.Column<int>(type: "integer", nullable: false),
                     RolId = table.Column<int>(type: "integer", nullable: false),
-                    Id = table.Column<int>(type: "integer", nullable: false),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -211,7 +211,7 @@ namespace RoutesService.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_KullaniciRolleri", x => new { x.KullaniciId, x.RolId });
+                    table.PrimaryKey("PK_KullaniciRolleri", x => x.Id);
                     table.ForeignKey(
                         name: "FK_KullaniciRolleri_Kullanicilar_KullaniciId",
                         column: x => x.KullaniciId,
@@ -230,9 +230,10 @@ namespace RoutesService.API.Migrations
                 name: "RolIzinleri",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     RolId = table.Column<int>(type: "integer", nullable: false),
                     IzinId = table.Column<int>(type: "integer", nullable: false),
-                    Id = table.Column<int>(type: "integer", nullable: false),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -245,7 +246,7 @@ namespace RoutesService.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RolIzinleri", x => new { x.RolId, x.IzinId });
+                    table.PrimaryKey("PK_RolIzinleri", x => x.Id);
                     table.ForeignKey(
                         name: "FK_RolIzinleri_Izinler_IzinId",
                         column: x => x.IzinId,
@@ -264,9 +265,10 @@ namespace RoutesService.API.Migrations
                 name: "RotaKategoriAtama",
                 columns: table => new
                 {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     RotaId = table.Column<int>(type: "integer", nullable: false),
                     KategoriId = table.Column<int>(type: "integer", nullable: false),
-                    Id = table.Column<int>(type: "integer", nullable: false),
                     Aciklama = table.Column<string>(type: "text", nullable: true),
                     AktifMi = table.Column<bool>(type: "boolean", nullable: true),
                     SilindiMi = table.Column<bool>(type: "boolean", nullable: true),
@@ -279,7 +281,7 @@ namespace RoutesService.API.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RotaKategoriAtama", x => new { x.RotaId, x.KategoriId });
+                    table.PrimaryKey("PK_RotaKategoriAtama", x => x.Id);
                     table.ForeignKey(
                         name: "FK_RotaKategoriAtama_RotaKategoriler_KategoriId",
                         column: x => x.KategoriId,
@@ -396,6 +398,11 @@ namespace RoutesService.API.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_KullaniciRolleri_KullaniciId",
+                table: "KullaniciRolleri",
+                column: "KullaniciId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_KullaniciRolleri_RolId",
                 table: "KullaniciRolleri",
                 column: "RolId");
@@ -406,9 +413,19 @@ namespace RoutesService.API.Migrations
                 column: "IzinId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RolIzinleri_RolId",
+                table: "RolIzinleri",
+                column: "RolId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RotaKategoriAtama_KategoriId",
                 table: "RotaKategoriAtama",
                 column: "KategoriId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RotaKategoriAtama_RotaId",
+                table: "RotaKategoriAtama",
+                column: "RotaId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RotaOnemliYerler_RotaId",

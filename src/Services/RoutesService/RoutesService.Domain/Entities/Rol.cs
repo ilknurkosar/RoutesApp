@@ -1,4 +1,5 @@
 ﻿using RoutesService.Domain.Entities.Base;
+using System.Text.Json.Serialization;
 
 namespace RoutesService.Domain.Entities
 {
@@ -6,9 +7,10 @@ namespace RoutesService.Domain.Entities
     {
         public string? Ad { get; set; }
 
+        [JsonIgnore]
         public ICollection<KullaniciRolleri>? KullaniciRolleri { get; set; }
-        
-        public ICollection<RolIzinleri>? RolIzinleri { get; set; }
 
+        [JsonIgnore]
+        public ICollection<RolIzinleri>? RolIzinleri { get; set; }
     }
 }

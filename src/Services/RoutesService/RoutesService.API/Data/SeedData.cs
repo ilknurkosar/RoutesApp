@@ -79,7 +79,7 @@ namespace RoutesService.API.Data
                     Soyad = "Kullanıcı",
                     Email = "admin@routesapp.com",
                     KullaniciAdi = "admin",
-                                         SifreHash = "admin123", // Gerçek uygulamada hash'lenmiş olmalı
+                                       
                     Telefon = "5551234567",
                     AktifMi = true,
                     SilindiMi = false,
@@ -93,7 +93,7 @@ namespace RoutesService.API.Data
                     Soyad = "Kullanıcı",
                     Email = "test@routesapp.com",
                     KullaniciAdi = "test",
-                                         SifreHash = "test123",
+                                       
                     Telefon = "5559876543",
                     AktifMi = true,
                     SilindiMi = false,
@@ -472,8 +472,6 @@ namespace RoutesService.API.Data
                 {
                     RotaId = 1,
                     KategoriId = 1,
-                    Rota = belgradRotasi,
-                    Kategori = dogaKategori,
                     AktifMi = true,
                     SilindiMi = false,
                     EkleyenKullaniciId = "system",
@@ -483,8 +481,6 @@ namespace RoutesService.API.Data
                 {
                     RotaId = 2,
                     KategoriId = 2,
-                    Rota = sultanahmetRotasi,
-                    Kategori = sehirKategori,
                     AktifMi = true,
                     SilindiMi = false,
                     EkleyenKullaniciId = "system",

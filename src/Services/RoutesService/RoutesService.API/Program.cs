@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.IO.Converters;
 using RoutesService.API.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,11 +10,12 @@ builder.Services.AddDbContext<RoutesDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
                          o => o.UseNetTopologySuite()));
 
-// Controller + JSON ayarları
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Gerekirse burada JSON formatlama yapılabilir
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.Converters.Add(new GeoJsonConverterFactory()); 
     });
 
 // 🔑 CORS ekleme (React bağlanabilsin diye)
@@ -46,17 +49,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var context = scope.ServiceProvider.GetRequiredService<RoutesDbContext>();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ Hata: {ex.Message}");
-        throw;
-    }
-}
+
 
 app.Run();

@@ -31,19 +31,24 @@ const UludagParkMap = () => {
 
   // Geometry'yi coordinate array'e çeviren fonksiyon
   const parseGeometry = (geometry) => {
-    if (!geometry || !geometry.coordinates) return null;
-    
-    try {
-      // PostGIS LineString formatını Leaflet formatına çevir
-      if (geometry.type === 'LineString') {
-        return geometry.coordinates.map(coord => [coord[1], coord[0]]); // [lng, lat] -> [lat, lng]
-      }
-      return null;
-    } catch (error) {
-      console.error('Geometry parse hatası:', error);
-      return null;
+  if (!geometry || !geometry.coordinates) return null;
+
+  try {
+    if (geometry.type === 'LineString') {
+      return geometry.coordinates.map(coord => [coord[1], coord[0]]);
     }
-  };
+
+    if (geometry.type === 'MultiLineString') {
+      return geometry.coordinates.flat().map(coord => [coord[1], coord[0]]);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Geometry parse hatası:', error);
+    return null;
+  }
+};
+
 
   // Rota tiplerini belirleme fonksiyonu
   const getRouteType = (rotaAdi) => {

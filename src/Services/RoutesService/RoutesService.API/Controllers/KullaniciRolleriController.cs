@@ -1,107 +1,82 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class KullaniciRolleriController : ControllerBase
     {
-        private readonly RoutesDbContext _context;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
-        public KullaniciRolleriController(RoutesDbContext context)
+        public KullaniciRolleriController(RoutesDbContext db, IMapper mapper)
         {
-            _context = context;
+            _db = db;
+            _mapper = mapper;
         }
 
-        // GET: api/KullaniciRolleri
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<KullaniciRolleri>>> GetKullaniciRolleri()
+        public async Task<IEnumerable<KullaniciRolleriListDto>> Get()
         {
-            return await _context.KullaniciRolleri
-                .Include(kr => kr.Kullanici) // Kullanıcı bilgilerini yükle
-                .Include(kr => kr.Rol) // Rol bilgilerini yükle
-                .ToListAsync();
+            return await _db.KullaniciRolleri
+                            .AsNoTracking()
+                            .Include(x => x.Kullanici)
+                            .Include(x => x.Rol)
+                            .ProjectTo<KullaniciRolleriListDto>(_mapper.ConfigurationProvider)
+                            .ToListAsync();
         }
 
-        // GET: api/KullaniciRolleri/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<KullaniciRolleri>> GetKullaniciRolleri(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<KullaniciRolleriDetailDto>> Get(int id)
         {
-            var kullaniciRolleri = await _context.KullaniciRolleri
-                .Include(kr => kr.Kullanici)
-                .Include(kr => kr.Rol)
-                .FirstOrDefaultAsync(kr => kr.Id == id);
+            var ent = await _db.KullaniciRolleri
+                               .AsNoTracking()
+                               .Include(x => x.Kullanici)
+                               .Include(x => x.Rol)
+                               .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (kullaniciRolleri == null)
-            {
-                return NotFound();
-            }
-
-            return kullaniciRolleri;
+            if (ent == null) return NotFound();
+            return _mapper.Map<KullaniciRolleriDetailDto>(ent);
         }
 
-        // PUT: api/KullaniciRolleri/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutKullaniciRolleri(int id, KullaniciRolleri kullaniciRolleri)
-        {
-            if (id != kullaniciRolleri.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(kullaniciRolleri).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!KullaniciRolleriExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/KullaniciRolleri
         [HttpPost]
-        public async Task<ActionResult<KullaniciRolleri>> PostKullaniciRolleri(KullaniciRolleri kullaniciRolleri)
+        public async Task<ActionResult<KullaniciRolleriDetailDto>> Create(KullaniciRolleriCreateDto dto)
         {
-            _context.KullaniciRolleri.Add(kullaniciRolleri);
-            await _context.SaveChangesAsync();
+            var ent = _mapper.Map<KullaniciRolleri>(dto);
+            _db.KullaniciRolleri.Add(ent);
+            await _db.SaveChangesAsync();
 
-            return CreatedAtAction("GetKullaniciRolleri", new { id = kullaniciRolleri.Id }, kullaniciRolleri);
+            return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<KullaniciRolleriDetailDto>(ent));
         }
 
-        // DELETE: api/KullaniciRolleri/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteKullaniciRolleri(int id)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, KullaniciRolleriUpdateDto dto)
         {
-            var kullaniciRolleri = await _context.KullaniciRolleri.FindAsync(id);
-            if (kullaniciRolleri == null)
-            {
-                return NotFound();
-            }
+            var ent = await _db.KullaniciRolleri.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent == null) return NotFound();
 
-            _context.KullaniciRolleri.Remove(kullaniciRolleri);
-            await _context.SaveChangesAsync();
-
+            _mapper.Map(dto, ent);
+            await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool KullaniciRolleriExists(int id)
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            return _context.KullaniciRolleri.Any(e => e.Id == id);
+            var ent = await _db.KullaniciRolleri.FindAsync(id);
+            if (ent == null) return NotFound();
+
+            _db.KullaniciRolleri.Remove(ent);
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

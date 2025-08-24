@@ -1,103 +1,63 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+namespace RoutesService.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
+public class RolController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RolController : ControllerBase
+    private readonly RoutesDbContext _db;
+    private readonly IMapper _mapper;
+    public RolController(RoutesDbContext db, IMapper mapper) { _db = db; _mapper = mapper; }
+
+    [HttpGet]
+    public async Task<IEnumerable<RolListDto>> Get()
+ => await _db.Roller.AsNoTracking()
+           .ProjectTo<RolListDto>(_mapper.ConfigurationProvider)
+           .ToListAsync();
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<RolDetailDto>> Get(int id)
     {
-        private readonly RoutesDbContext _context;
+        var e = await _db.Roller.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (e is null) return NotFound();
+        return _mapper.Map<RolDetailDto>(e);
+    }
 
-        public RolController(RoutesDbContext context)
-        {
-            _context = context;
-        }
+    [HttpPost]
+    public async Task<ActionResult<RolDetailDto>> Create(RolCreateDto dto)
+    {
+        var ent = _mapper.Map<Rol>(dto);
+        _db.Roller.Add(ent);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<RolDetailDto>(ent));
+    }
 
-        // GET: api/Rol
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Rol>>> GetRoller()
-        {
-            return await _context.Roller.ToListAsync();
-        }
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, RolUpdateDto dto)
+    {
+        var ent = await _db.Roller.FirstOrDefaultAsync(x => x.Id == id);
+        if (ent is null) return NotFound();
+        _mapper.Map(dto, ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
-        // GET: api/Rol/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Rol>> GetRol(int id)
-        {
-            var rol = await _context.Roller.FindAsync(id);
-
-            if (rol == null)
-            {
-                return NotFound();
-            }
-
-            return rol;
-        }
-
-        // PUT: api/Rol/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRol(int id, Rol rol)
-        {
-            if (id != rol.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(rol).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RolExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/Rol
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Rol>> PostRol(Rol rol)
-        {
-            _context.Roller.Add(rol);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetRol", new { id = rol.Id }, rol);
-        }
-
-        // DELETE: api/Rol/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRol(int id)
-        {
-            var rol = await _context.Roller.FindAsync(id);
-            if (rol == null)
-            {
-                return NotFound();
-            }
-
-            _context.Roller.Remove(rol);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool RolExists(int id)
-        {
-            return _context.Roller.Any(e => e.Id == id);
-        }
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var ent = await _db.Roller.FindAsync(id);
+        if (ent is null) return NotFound();
+        _db.Roller.Remove(ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 }

@@ -1,108 +1,79 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class RotaTanimController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RotaTanimController : ControllerBase
+    private readonly RoutesDbContext _db;
+    private readonly IMapper _mapper;
+
+    public RotaTanimController(RoutesDbContext db, IMapper mapper)
     {
-        private readonly RoutesDbContext _context;
+        _db = db;
+        _mapper = mapper;
+    }
 
-        public RotaTanimController(RoutesDbContext context)
-        {
-            _context = context;
-        }
+    // 🔹 Listeleme herkese açık
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IEnumerable<RotaTanimListDto>> Get()
+    {
+        return await _db.Rotalar
+                        .AsNoTracking()
+                        .ProjectTo<RotaTanimListDto>(_mapper.ConfigurationProvider)
+                        .ToListAsync();
+    }
 
-        // GET: api/RotaTanim
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaTanim>>> GetRotalar()
-        {
-            return await _context.Rotalar.ToListAsync();
-        }
+    [HttpGet("{id:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<RotaTanimDetailDto>> Get(int id)
+    {
+        var ent = await _db.Rotalar.FindAsync(id);
+        if (ent == null) return NotFound();
+        return _mapper.Map<RotaTanimDetailDto>(ent);
+    }
 
-        // GET: api/RotaTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaTanim>> GetRotaTanim(int id)
-        {
-            var rotaTanim = await _context.Rotalar.FindAsync(id);
+    // 🔹 Ekleme sadece Admin
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<RotaTanimDetailDto>> Create(RotaTanimCreateDto dto)
+    {
+        var ent = _mapper.Map<RotaTanim>(dto);
+        _db.Rotalar.Add(ent);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<RotaTanimDetailDto>(ent));
+    }
 
-            if (rotaTanim == null)
-            {
-                return NotFound();
-            }
+    // 🔹 Güncelleme sadece Admin
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, RotaTanimUpdateDto dto)
+    {
+        var ent = await _db.Rotalar.FindAsync(id);
+        if (ent == null) return NotFound();
 
-            return rotaTanim;
-        }
+        _mapper.Map(dto, ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
-        // PUT: api/RotaTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaTanim(int id, RotaTanim rotaTanim)
-        {
-            if (id != rotaTanim.Id)
-            {
-                return BadRequest();
-            }
+    // 🔹 Silme sadece Admin
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var ent = await _db.Rotalar.FindAsync(id);
+        if (ent == null) return NotFound();
 
-            _context.Entry(rotaTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/RotaTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<RotaTanim>> PostRotaTanim(RotaTanim rotaTanim)
-        {
-            _context.Rotalar.Add(rotaTanim);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetRotaTanim", new { id = rotaTanim.Id }, rotaTanim);
-        }
-
-        // DELETE: api/RotaTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaTanim(int id)
-        {
-            var rotaTanim = await _context.Rotalar.FindAsync(id);
-            if (rotaTanim == null)
-            {
-                return NotFound();
-            }
-
-            _context.Rotalar.Remove(rotaTanim);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool RotaTanimExists(int id)
-        {
-            return _context.Rotalar.Any(e => e.Id == id);
-        }
+        _db.Rotalar.Remove(ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 }

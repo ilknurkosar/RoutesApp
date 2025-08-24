@@ -1,108 +1,77 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // JWT zorunlu
     public class RotaOnemliYerTanimController : ControllerBase
     {
-        private readonly RoutesDbContext _context;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
-        public RotaOnemliYerTanimController(RoutesDbContext context)
+        public RotaOnemliYerTanimController(RoutesDbContext db, IMapper mapper)
         {
-            _context = context;
+            _db = db;
+            _mapper = mapper;
         }
 
-        // GET: api/RotaOnemliYerTanim
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaOnemliYerTanim>>> GetRotaOnemliYerler()
+        public async Task<IEnumerable<RotaOnemliYerTanimListDto>> Get()
         {
-            return await _context.RotaOnemliYerler.ToListAsync();
+            return await _db.RotaOnemliYerler
+                            .AsNoTracking()
+                            .ProjectTo<RotaOnemliYerTanimListDto>(_mapper.ConfigurationProvider)
+                            .ToListAsync();
         }
 
-        // GET: api/RotaOnemliYerTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaOnemliYerTanim>> GetRotaOnemliYerTanim(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<RotaOnemliYerTanimDetailDto>> Get(int id)
         {
-            var rotaOnemliYerTanim = await _context.RotaOnemliYerler.FindAsync(id);
-
-            if (rotaOnemliYerTanim == null)
-            {
-                return NotFound();
-            }
-
-            return rotaOnemliYerTanim;
+            var ent = await _db.RotaOnemliYerler
+                               .AsNoTracking()
+                               .FirstOrDefaultAsync(x => x.Id == id);
+            if (ent == null) return NotFound();
+            return _mapper.Map<RotaOnemliYerTanimDetailDto>(ent);
         }
 
-        // PUT: api/RotaOnemliYerTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaOnemliYerTanim(int id, RotaOnemliYerTanim rotaOnemliYerTanim)
-        {
-            if (id != rotaOnemliYerTanim.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(rotaOnemliYerTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaOnemliYerTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/RotaOnemliYerTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<RotaOnemliYerTanim>> PostRotaOnemliYerTanim(RotaOnemliYerTanim rotaOnemliYerTanim)
+        public async Task<ActionResult<RotaOnemliYerTanimDetailDto>> Create(RotaOnemliYerTanimCreateDto dto)
         {
-            _context.RotaOnemliYerler.Add(rotaOnemliYerTanim);
-            await _context.SaveChangesAsync();
+            var ent = _mapper.Map<RotaOnemliYerTanim>(dto);
+            _db.RotaOnemliYerler.Add(ent);
+            await _db.SaveChangesAsync();
 
-            return CreatedAtAction("GetRotaOnemliYerTanim", new { id = rotaOnemliYerTanim.Id }, rotaOnemliYerTanim);
+            return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<RotaOnemliYerTanimDetailDto>(ent));
         }
 
-        // DELETE: api/RotaOnemliYerTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaOnemliYerTanim(int id)
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, RotaOnemliYerTanimUpdateDto dto)
         {
-            var rotaOnemliYerTanim = await _context.RotaOnemliYerler.FindAsync(id);
-            if (rotaOnemliYerTanim == null)
-            {
-                return NotFound();
-            }
+            var ent = await _db.RotaOnemliYerler.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent == null) return NotFound();
 
-            _context.RotaOnemliYerler.Remove(rotaOnemliYerTanim);
-            await _context.SaveChangesAsync();
-
+            _mapper.Map(dto, ent);
+            await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool RotaOnemliYerTanimExists(int id)
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            return _context.RotaOnemliYerler.Any(e => e.Id == id);
+            var ent = await _db.RotaOnemliYerler.FindAsync(id);
+            if (ent == null) return NotFound();
+
+            _db.RotaOnemliYerler.Remove(ent);
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

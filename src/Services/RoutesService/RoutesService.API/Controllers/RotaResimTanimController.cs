@@ -1,108 +1,69 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+[Route("api/[controller]")]
+[ApiController]
+public class RotaResimTanimController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RotaResimTanimController : ControllerBase
+    private readonly RoutesDbContext _db;
+    private readonly IMapper _mapper;
+
+    public RotaResimTanimController(RoutesDbContext db, IMapper mapper)
     {
-        private readonly RoutesDbContext _context;
+        _db = db;
+        _mapper = mapper;
+    }
 
-        public RotaResimTanimController(RoutesDbContext context)
-        {
-            _context = context;
-        }
+    [HttpGet]
+    public async Task<IEnumerable<RotaResimTanimListDto>> Get()
+    {
+        return await _db.RotaResimler
+                        .AsNoTracking()
+                        .ProjectTo<RotaResimTanimListDto>(_mapper.ConfigurationProvider)
+                        .ToListAsync();
+    }
 
-        // GET: api/RotaResimTanim
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaResimTanim>>> GetRotaResimler()
-        {
-            return await _context.RotaResimler.ToListAsync();
-        }
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<RotaResimTanimDetailDto>> Get(int id)
+    {
+        var ent = await _db.RotaResimler.FindAsync(id);
+        if (ent == null) return NotFound();
+        return _mapper.Map<RotaResimTanimDetailDto>(ent);
+    }
 
-        // GET: api/RotaResimTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaResimTanim>> GetRotaResimTanim(int id)
-        {
-            var rotaResimTanim = await _context.RotaResimler.FindAsync(id);
+    [HttpPost]
+    public async Task<ActionResult<RotaResimTanimDetailDto>> Create(RotaResimTanimCreateDto dto)
+    {
+        var ent = _mapper.Map<RotaResimTanim>(dto);
+        _db.RotaResimler.Add(ent);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<RotaResimTanimDetailDto>(ent));
+    }
 
-            if (rotaResimTanim == null)
-            {
-                return NotFound();
-            }
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, RotaResimTanimUpdateDto dto)
+    {
+        var ent = await _db.RotaResimler.FindAsync(id);
+        if (ent == null) return NotFound();
 
-            return rotaResimTanim;
-        }
+        _mapper.Map(dto, ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
-        // PUT: api/RotaResimTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaResimTanim(int id, RotaResimTanim rotaResimTanim)
-        {
-            if (id != rotaResimTanim.Id)
-            {
-                return BadRequest();
-            }
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var ent = await _db.RotaResimler.FindAsync(id);
+        if (ent == null) return NotFound();
 
-            _context.Entry(rotaResimTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaResimTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/RotaResimTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<RotaResimTanim>> PostRotaResimTanim(RotaResimTanim rotaResimTanim)
-        {
-            _context.RotaResimler.Add(rotaResimTanim);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetRotaResimTanim", new { id = rotaResimTanim.Id }, rotaResimTanim);
-        }
-
-        // DELETE: api/RotaResimTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaResimTanim(int id)
-        {
-            var rotaResimTanim = await _context.RotaResimler.FindAsync(id);
-            if (rotaResimTanim == null)
-            {
-                return NotFound();
-            }
-
-            _context.RotaResimler.Remove(rotaResimTanim);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool RotaResimTanimExists(int id)
-        {
-            return _context.RotaResimler.Any(e => e.Id == id);
-        }
+        _db.RotaResimler.Remove(ent);
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 }

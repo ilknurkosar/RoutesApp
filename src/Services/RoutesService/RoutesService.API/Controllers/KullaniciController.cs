@@ -1,103 +1,140 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Crypto.Generators;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class KullaniciController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class KullaniciController : ControllerBase
+    private readonly RoutesDbContext _db;
+
+    public KullaniciController(RoutesDbContext db)
     {
-        private readonly RoutesDbContext _context;
+        _db = db;
+    }
 
-        public KullaniciController(RoutesDbContext context)
+    // 🔹 Tüm kullanıcıları listeleme → Sadece Admin
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll()
+    {
+        var users = await _db.Kullanicilar
+            .Include(k => k.KullaniciRolleri)!.ThenInclude(kr => kr.Rol)
+            .ToListAsync();
+
+        return Ok(users.Select(u => new {
+            u.Id,
+            u.KullaniciAdi,
+            u.Email,
+            Roller = u.KullaniciRolleri.Select(r => r.Rol!.Ad).ToList()
+        }));
+    }
+
+    // 🔹 Tek kullanıcı bilgisi → Hem User hem Admin kendi bilgisine erişebilir
+    [HttpGet("{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var user = await _db.Kullanicilar
+            .Include(k => k.KullaniciRolleri)!.ThenInclude(kr => kr.Rol)
+            .FirstOrDefaultAsync(k => k.Id == id);
+
+        if (user == null) return NotFound();
+
+        if (!User.IsInRole("Admin") &&
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value != id.ToString())
         {
-            _context = context;
+            return Forbid();
         }
 
-        // GET: api/Kullanici
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Kullanici>>> GetKullanicilar()
+        return Ok(new
         {
-            return await _context.Kullanicilar.ToListAsync();
+            user.Id,
+            user.KullaniciAdi,
+            user.Email,
+            Roller = user.KullaniciRolleri.Select(r => r.Rol!.Ad).ToList()
+        });
+    }
+
+    // 🔹 Yeni kullanıcı oluşturma → Admin yapabilir, default rol = User
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] KullaniciCreateDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Ad) ||
+            string.IsNullOrWhiteSpace(dto.Soyad) ||
+            string.IsNullOrWhiteSpace(dto.KullaniciAdi) ||
+            string.IsNullOrWhiteSpace(dto.Email) ||
+            string.IsNullOrWhiteSpace(dto.Sifre))
+        {
+            return BadRequest("Tüm alanlar doldurulmalıdır.");
         }
 
-        // GET: api/Kullanici/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Kullanici>> GetKullanici(int id)
+        var user = new Kullanici
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
+            Ad = dto.Ad,
+            Soyad = dto.Soyad,
+            KullaniciAdi = dto.KullaniciAdi,
+            Email = dto.Email,
+            Sifre = BCrypt.Net.BCrypt.HashPassword(dto.Sifre)
+        };
 
-            if (kullanici == null)
+        _db.Kullanicilar.Add(user);
+        await _db.SaveChangesAsync();
+
+        // 🔹 Varsayılan User rolü
+        var userRole = await _db.Roller.FirstOrDefaultAsync(r => r.Ad == "User");
+        if (userRole != null)
+        {
+            _db.KullaniciRolleri.Add(new KullaniciRolleri
             {
-                return NotFound();
-            }
-
-            return kullanici;
+                KullaniciId = user.Id,
+                RolId = userRole.Id
+            });
+            await _db.SaveChangesAsync();
         }
 
-        // PUT: api/Kullanici/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutKullanici(int id, Kullanici kullanici)
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, new { user.Id, user.KullaniciAdi });
+    }
+
+    // 🔹 Kullanıcı güncelleme → kendi veya admin
+    [HttpPut("{id:int}")]
+    [Authorize]
+    public async Task<IActionResult> Update(int id, [FromBody] KullaniciUpdateDto dto)
+    {
+        var user = await _db.Kullanicilar.FindAsync(id);
+        if (user == null) return NotFound();
+
+        if (!User.IsInRole("Admin") &&
+            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value != id.ToString())
         {
-            if (id != kullanici.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(kullanici).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!KullaniciExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            return Forbid();
         }
 
-        // POST: api/Kullanici
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Kullanici>> PostKullanici(Kullanici kullanici)
-        {
-            _context.Kullanicilar.Add(kullanici);
-            await _context.SaveChangesAsync();
+        if (!string.IsNullOrWhiteSpace(dto.KullaniciAdi)) user.KullaniciAdi = dto.KullaniciAdi;
+        if (!string.IsNullOrWhiteSpace(dto.Email)) user.Email = dto.Email;
+        if (!string.IsNullOrWhiteSpace(dto.Sifre))
+            user.Sifre = BCrypt.Net.BCrypt.HashPassword(dto.Sifre);
 
-            return CreatedAtAction("GetKullanici", new { id = kullanici.Id }, kullanici);
-        }
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
 
-        // DELETE: api/Kullanici/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteKullanici(int id)
-        {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
-            if (kullanici == null)
-            {
-                return NotFound();
-            }
+    // 🔹 Kullanıcı silme → Sadece Admin
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var user = await _db.Kullanicilar.FindAsync(id);
+        if (user == null) return NotFound();
 
-            _context.Kullanicilar.Remove(kullanici);
-            await _context.SaveChangesAsync();
+        _db.Kullanicilar.Remove(user);
+        await _db.SaveChangesAsync();
 
-            return NoContent();
-        }
-
-        private bool KullaniciExists(int id)
-        {
-            return _context.Kullanicilar.Any(e => e.Id == id);
-        }
+        return NoContent();
     }
 }

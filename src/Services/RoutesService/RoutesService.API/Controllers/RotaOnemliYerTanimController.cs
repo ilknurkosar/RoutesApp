@@ -1,108 +1,103 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.IO;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+
     public class RotaOnemliYerTanimController : ControllerBase
     {
         private readonly RoutesDbContext _context;
+        private readonly IMapper _mapper;
 
-        public RotaOnemliYerTanimController(RoutesDbContext context)
+        public RotaOnemliYerTanimController(RoutesDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/RotaOnemliYerTanim
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaOnemliYerTanim>>> GetRotaOnemliYerler()
-        {
-            return await _context.RotaOnemliYerler.ToListAsync();
-        }
+        public async Task<IEnumerable<RotaOnemliYerTanimListDto>> GetRotaOnemliYerler()
+             => await _context.RotaOnemliYerler
+                 .AsNoTracking()
+                 .ProjectTo<RotaOnemliYerTanimListDto>(_mapper.ConfigurationProvider)
+                 .ToListAsync();
 
         // GET: api/RotaOnemliYerTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaOnemliYerTanim>> GetRotaOnemliYerTanim(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<RotaOnemliYerTanimDetailDto>> GetRotaOnemliYerTanim(int id)
         {
-            var rotaOnemliYerTanim = await _context.RotaOnemliYerler.FindAsync(id);
-
-            if (rotaOnemliYerTanim == null)
-            {
-                return NotFound();
-            }
-
-            return rotaOnemliYerTanim;
+            var ent = await _context.RotaOnemliYerler.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
+            return _mapper.Map<RotaOnemliYerTanimDetailDto>(ent);
         }
 
-        // PUT: api/RotaOnemliYerTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaOnemliYerTanim(int id, RotaOnemliYerTanim rotaOnemliYerTanim)
+
+        // POST: api/RotaOnemliYerTanim
+        [HttpPost]
+        public async Task<ActionResult<RotaOnemliYerTanimDetailDto>> PostRotaOnemliYerTanim(RotaOnemliYerTanimCreateDto dto)
         {
-            if (id != rotaOnemliYerTanim.Id)
+            var ent = _mapper.Map<RotaOnemliYerTanim>(dto);
+
+            if (!string.IsNullOrWhiteSpace(dto.GeometryWkt))
             {
-                return BadRequest();
+                var reader = new WKTReader();
+                ent.Geometry = reader.Read(dto.GeometryWkt);
             }
 
-            _context.Entry(rotaOnemliYerTanim).State = EntityState.Modified;
+            _context.RotaOnemliYerler.Add(ent);
+            await _context.SaveChangesAsync();
 
-            try
+            var detail = _mapper.Map<RotaOnemliYerTanimDetailDto>(ent);
+            return CreatedAtAction(nameof(GetRotaOnemliYerTanim), new { id = ent.Id }, detail);
+        }
+
+
+        // PUT: api/RotaOnemliYerTanim/5
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> PutRotaOnemliYerTanim(int id, RotaOnemliYerTanimUpdateDto dto)
+        {
+            var ent = await _context.RotaOnemliYerler.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
+
+            _mapper.Map(dto, ent);
+
+            if (dto.GeometryWkt != null)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaOnemliYerTanimExists(id))
+                if (string.IsNullOrWhiteSpace(dto.GeometryWkt))
                 {
-                    return NotFound();
+                    ent.Geometry = null;
                 }
                 else
                 {
-                    throw;
+                    var reader = new WKTReader();
+                    ent.Geometry = reader.Read(dto.GeometryWkt);
                 }
             }
 
-            return NoContent();
-        }
-
-        // POST: api/RotaOnemliYerTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<RotaOnemliYerTanim>> PostRotaOnemliYerTanim(RotaOnemliYerTanim rotaOnemliYerTanim)
-        {
-            _context.RotaOnemliYerler.Add(rotaOnemliYerTanim);
             await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetRotaOnemliYerTanim", new { id = rotaOnemliYerTanim.Id }, rotaOnemliYerTanim);
+            return NoContent();
         }
 
         // DELETE: api/RotaOnemliYerTanim/5
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteRotaOnemliYerTanim(int id)
         {
-            var rotaOnemliYerTanim = await _context.RotaOnemliYerler.FindAsync(id);
-            if (rotaOnemliYerTanim == null)
-            {
-                return NotFound();
-            }
+            var ent = await _context.RotaOnemliYerler.FindAsync(id);
+            if (ent is null) return NotFound();
 
-            _context.RotaOnemliYerler.Remove(rotaOnemliYerTanim);
+            _context.RotaOnemliYerler.Remove(ent);
             await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool RotaOnemliYerTanimExists(int id)
-        {
-            return _context.RotaOnemliYerler.Any(e => e.Id == id);
         }
     }
 }

@@ -1,6 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
@@ -9,95 +13,101 @@ namespace RoutesService.API.Controllers
     [ApiController]
     public class KullaniciController : ControllerBase
     {
-        private readonly RoutesDbContext _context;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
-        public KullaniciController(RoutesDbContext context)
+        public KullaniciController(RoutesDbContext db, IMapper mapper)
         {
-            _context = context;
+            _db = db;
+            _mapper = mapper;
         }
 
-        // GET: api/Kullanici
+        // LIST
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Kullanici>>> GetKullanicilar()
+        public async Task<IEnumerable<KullaniciListDto>> GetKullanicilar()
+            => await _db.Kullanicilar
+                .AsNoTracking()
+                .ProjectTo<KullaniciListDto>(_mapper.ConfigurationProvider)
+                .ToListAsync();
+
+        // DETAIL
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<KullaniciDetailDto>> GetKullanici(int id)
         {
-            return await _context.Kullanicilar.ToListAsync();
+            var dto = await _db.Kullanicilar.AsNoTracking()
+                .Where(x => x.Id == id)
+                .ProjectTo<KullaniciDetailDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync();
+
+            if (dto is null) return NotFound();
+            return dto;
         }
 
-        // GET: api/Kullanici/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Kullanici>> GetKullanici(int id)
+        // CREATE (register)
+        [HttpPost]
+        public async Task<ActionResult<KullaniciDetailDto>> PostKullanici([FromBody] KullaniciCreateDto dto)
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
 
-            if (kullanici == null)
-            {
-                return NotFound();
-            }
+            if (await _db.Kullanicilar.AnyAsync(u => u.Email == dto.Email))
+                return Conflict("Bu e‑posta zaten kayıtlı.");
+            if (await _db.Kullanicilar.AnyAsync(u => u.KullaniciAdi == dto.KullaniciAdi))
+                return Conflict("Bu kullanıcı adı zaten kayıtlı.");
 
-            return kullanici;
+            var ent = _mapper.Map<Kullanici>(dto);
+
+            ent.Sifre = BCrypt.Net.BCrypt.HashPassword(dto.Sifre);
+
+            _db.Kullanicilar.Add(ent);
+            await _db.SaveChangesAsync();
+
+            var detail = _mapper.Map<KullaniciDetailDto>(ent);
+            return CreatedAtAction(nameof(GetKullanici), new { id = ent.Id }, detail);
         }
 
-        // PUT: api/Kullanici/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutKullanici(int id, Kullanici kullanici)
+        // UPDATE
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> PutKullanici(int id, [FromBody] KullaniciUpdateDto dto)
         {
-            if (id != kullanici.Id)
+            var ent = await _db.Kullanicilar.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
+
+
+            if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != ent.Email)
             {
-                return BadRequest();
+                if (await _db.Kullanicilar.AnyAsync(u => u.Email == dto.Email && u.Id != id))
+                    return Conflict("Bu e‑posta başka bir kullanıcıda mevcut.");
+            }
+            if (!string.IsNullOrWhiteSpace(dto.KullaniciAdi) && dto.KullaniciAdi != ent.KullaniciAdi)
+            {
+                if (await _db.Kullanicilar.AnyAsync(u => u.KullaniciAdi == dto.KullaniciAdi && u.Id != id))
+                    return Conflict("Bu kullanıcı adı başka bir kullanıcıda mevcut.");
             }
 
-            _context.Entry(kullanici).State = EntityState.Modified;
+            _mapper.Map(dto, ent);
 
-            try
+
+            if (dto.Sifre != null)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!KullaniciExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (string.IsNullOrWhiteSpace(dto.Sifre))
+                    return BadRequest("Şifre boş olamaz.");
+                ent.Sifre = BCrypt.Net.BCrypt.HashPassword(dto.Sifre);
             }
 
+            await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        // POST: api/Kullanici
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Kullanici>> PostKullanici(Kullanici kullanici)
-        {
-            _context.Kullanicilar.Add(kullanici);
-            await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetKullanici", new { id = kullanici.Id }, kullanici);
-        }
-
-        // DELETE: api/Kullanici/5
-        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteKullanici(int id)
         {
-            var kullanici = await _context.Kullanicilar.FindAsync(id);
-            if (kullanici == null)
-            {
-                return NotFound();
-            }
+            var ent = await _db.Kullanicilar.FindAsync(id);
+            if (ent is null) return NotFound();
 
-            _context.Kullanicilar.Remove(kullanici);
-            await _context.SaveChangesAsync();
-
+            _db.Kullanicilar.Remove(ent);
+            await _db.SaveChangesAsync();
             return NoContent();
-        }
-
-        private bool KullaniciExists(int id)
-        {
-            return _context.Kullanicilar.Any(e => e.Id == id);
         }
     }
 }

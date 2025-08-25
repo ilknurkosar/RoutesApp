@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, X, MapPin, Clock, Flower2, Navigation, User, Settings, Star, History, Bookmark, Mountain, Car, Bike, Footprints, Zap, AlertCircle, RefreshCw } from 'lucide-react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
+import {
+  Search, Menu, X, MapPin, Clock, Flower2, Navigation, User,
+  Mountain, Car, Bike, Footprints, Zap, AlertCircle, RefreshCw
+} from 'lucide-react';
+import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ApiService from './services/api';
+import wellknown from 'wellknown';
 
 // Leaflet icon fix for React
 delete L.Icon.Default.prototype._getIconUrl;
@@ -17,81 +21,96 @@ L.Icon.Default.mergeOptions({
 const ULUDAG_CENTER = [40.0917, 29.0750];
 const DEFAULT_ZOOM = 13;
 
-const UludagParkMap = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState('');
-  const [activeLayer, setActiveLayer] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // API state'leri
-  const [rotalar, setRotalar] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Geometry'yi coordinate array'e çeviren fonksiyon
-  const parseGeometry = (geometry) => {
-  if (!geometry || !geometry.coordinates) return null;
-
+// WKT → Leaflet [lat, lon] listesi
+const parseWktToLatLngs = (wkt) => {
+  if (!wkt) return null;
   try {
-    if (geometry.type === 'LineString') {
-      return geometry.coordinates.map(coord => [coord[1], coord[0]]);
-    }
+    const geom = wellknown(wkt);
+    if (!geom) return null;
 
-    if (geometry.type === 'MultiLineString') {
-      return geometry.coordinates.flat().map(coord => [coord[1], coord[0]]);
+    if (geom.type === 'LineString') {
+      return geom.coordinates.map(([lon, lat]) => [lat, lon]);
     }
-
+    if (geom.type === 'MultiLineString') {
+      return geom.coordinates.flat().map(([lon, lat]) => [lat, lon]);
+    }
     return null;
-  } catch (error) {
-    console.error('Geometry parse hatası:', error);
+  } catch (e) {
+    console.error('WKT parse hatası:', e);
     return null;
   }
 };
 
+// Rota tip belirleme
+const getRouteType = (adi) => {
+  if (!adi) return 'walking';
+  const name = adi.toLowerCase();
+  if (name.includes('bisiklet') || name.includes('bike')) return 'cycling';
+  if (name.includes('araç') || name.includes('araba') || name.includes('car')) return 'driving';
+  if (name.includes('atv') || name.includes('motor')) return 'atv';
+  return 'walking';
+};
 
-  // Rota tiplerini belirleme fonksiyonu
-  const getRouteType = (rotaAdi) => {
-    if (!rotaAdi) return 'walking';
-    const adi = rotaAdi.toLowerCase();
-    if (adi.includes('bisiklet') || adi.includes('bike')) return 'cycling';
-    if (adi.includes('araç') || adi.includes('araba') || adi.includes('car')) return 'driving';
-    if (adi.includes('atv') || adi.includes('motor')) return 'atv';
-    return 'walking';
-  };
+const getRouteIcon = (type) => {
+  switch (type) {
+    case 'cycling': return Bike;
+    case 'driving': return Car;
+    case 'atv': return Zap;
+    default: return Footprints;
+  }
+};
 
-  // Rota ikonunu belirleme
-  const getRouteIcon = (type) => {
-    switch(type) {
-      case 'cycling': return Bike;
-      case 'driving': return Car;
-      case 'atv': return Zap;
-      default: return Footprints;
-    }
-  };
+const getRouteColor = (type) => {
+  switch (type) {
+    case 'cycling': return '#3b82f6';
+    case 'driving': return '#ef4444';
+    case 'atv': return '#f59e0b';
+    default: return '#22c55e';
+  }
+};
 
-  // Rota rengini belirleme
-  const getRouteColor = (type) => {
-    switch(type) {
-      case 'cycling': return '#3b82f6';
-      case 'driving': return '#ef4444';
-      case 'atv': return '#f59e0b';
-      default: return '#22c55e';
-    }
-  };
+const UludagParkMap = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [activeLayer, setActiveLayer] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // API'den rotaları çek
+  // API state'leri
+  const [rotalar, setRotalar] = useState([]);          // detay + koordinat dahil
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // API'den rotaları çek (liste + detay)
   useEffect(() => {
     const fetchRotalar = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await ApiService.getRotalar();
-        console.log('API\'den gelen rotalar:', data);
-        setRotalar(data || []);
+
+        // 1) Listeyi çek
+        const list = await ApiService.getRotalar(); // [{id, adi, renk, mesafe, tahminiSureDakika}, ...]
+        if (!Array.isArray(list)) {
+          setRotalar([]);
+          return;
+        }
+
+        // 2) Her rota için detay (geometryWkt) çek
+        const withGeom = await Promise.all(
+          list.map(async (r) => {
+            try {
+              const d = await ApiService.getRota(r.id); // { id, geometryWkt, ... }
+              const coords = parseWktToLatLngs(d?.geometryWkt);
+              return { ...r, geometryWkt: d?.geometryWkt ?? null, coordinates: coords };
+            } catch {
+              return { ...r, geometryWkt: null, coordinates: null };
+            }
+          })
+        );
+
+        setRotalar(withGeom);
       } catch (err) {
         console.error('Rotalar yüklenirken hata:', err);
-        setError(`Rotalar yüklenirken hata oluştu: ${err.message}`);
+        setError(`Rotalar yüklenirken hata oluştu: ${err.message ?? err}`);
       } finally {
         setLoading(false);
       }
@@ -100,34 +119,46 @@ const UludagParkMap = () => {
     fetchRotalar();
   }, []);
 
-  // Rotaları tipine göre grupla
+  // Rotaları tipine göre grupla (ve UI için alanları hazırla)
   const groupedRoutes = rotalar.reduce((groups, rota) => {
     const type = getRouteType(rota.adi);
     if (!groups[type]) {
       groups[type] = {
-        name: type === 'walking' ? 'Yürüyüş Rotaları' : 
-              type === 'cycling' ? 'Bisiklet Rotaları' :
-              type === 'driving' ? 'Araç Rotaları' : 'ATV Rotaları',
+        name:
+          type === 'walking'
+            ? 'Yürüyüş Rotaları'
+            : type === 'cycling'
+            ? 'Bisiklet Rotaları'
+            : type === 'driving'
+            ? 'Araç Rotaları'
+            : 'ATV Rotaları',
         color: getRouteColor(type),
         icon: getRouteIcon(type),
-        paths: []
+        paths: [],
       };
     }
-    
+
+    const mesafeKm =
+      typeof rota.mesafe === 'number'
+        ? `${(rota.mesafe / 1000).toFixed(2)} km`
+        : 'Bilinmiyor';
+
+    const sure =
+      typeof rota.tahminiSureDakika === 'number'
+        ? rota.tahminiSureDakika >= 60
+          ? `${Math.floor(rota.tahminiSureDakika / 60)} saat ${rota.tahminiSureDakika % 60} dakika`
+          : `${rota.tahminiSureDakika} dakika`
+        : 'Bilinmiyor';
+
     groups[type].paths.push({
       id: rota.id,
       name: rota.adi || 'İsimsiz Rota',
-      distance: rota.mesafe ? `${rota.mesafe.toFixed(1)} km` : 'Bilinmiyor',
-      duration: rota.tahminiSureDakika ? 
-        (rota.tahminiSureDakika >= 60 ? 
-          `${Math.floor(rota.tahminiSureDakika / 60)} saat ${rota.tahminiSureDakika % 60} dakika` : 
-          `${rota.tahminiSureDakika} dakika`) : 'Bilinmiyor',
-      difficulty: 'Orta',
+      distance: mesafeKm,
+      duration: sure,
       color: rota.renk || getRouteColor(type),
-      geometry: rota.geometry,
-      coordinates: parseGeometry(rota.geometry)
+      coordinates: rota.coordinates,
     });
-    
+
     return groups;
   }, {});
 
@@ -136,27 +167,34 @@ const UludagParkMap = () => {
     { id: 1, type: 'eclipse', date: '2025-03-29', time: '10:30', location: 'Sarıalan Bölgesi', description: 'Kısmi Güneş Tutulması', coordinates: [40.1000, 29.0800] },
     { id: 2, type: 'bloom', date: '2025-04-15', location: 'Kazıklıbent Yaylası', description: 'Uludağ Lale Çiçekleri', coordinates: [40.0850, 29.0900] },
     { id: 3, type: 'bloom', date: '2025-05-20', location: 'Kirazlıyayla', description: 'Rododendron Çiçekleri', coordinates: [40.0980, 29.0600] },
-    { id: 4, type: 'eclipse', date: '2025-09-17', time: '14:45', location: 'Zirve Bölgesi', description: 'Kısmi Güneş Tutulması', coordinates: [40.1100, 29.0750] }
+    { id: 4, type: 'eclipse', date: '2025-09-17', time: '14:45', location: 'Zirve Bölgesi', description: 'Kısmi Güneş Tutulması', coordinates: [40.1100, 29.0750] },
   ];
 
-  const recentSearches = ['Sarıalan', 'Oteller Bölgesi', 'Teleferik İstasyonu', 'Kamp Alanları'];
-  const savedLocations = ['Ev', 'İş Yeri', 'Favorim 1', 'Favorim 2'];
-
-  // Yeniden yükleme fonksiyonu
   const handleRetry = async () => {
     setError(null);
     setLoading(true);
     try {
-      const data = await ApiService.getRotalar();
-      setRotalar(data || []);
+      const list = await ApiService.getRotalar();
+      const withGeom = await Promise.all(
+        (list || []).map(async (r) => {
+          try {
+            const d = await ApiService.getRota(r.id);
+            const coords = parseWktToLatLngs(d?.geometryWkt);
+            return { ...r, geometryWkt: d?.geometryWkt ?? null, coordinates: coords };
+          } catch {
+            return { ...r, geometryWkt: null, coordinates: null };
+          }
+        })
+      );
+      setRotalar(withGeom);
     } catch (err) {
-      setError(`Rotalar yüklenirken hata oluştu: ${err.message}`);
+      setError(`Rotalar yüklenirken hata oluştu: ${err.message ?? err}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Loading durumu
+  // Loading
   if (loading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-emerald-100 via-blue-50 to-green-100">
@@ -169,7 +207,7 @@ const UludagParkMap = () => {
     );
   }
 
-  // Error durumu
+  // Error
   if (error) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-red-100 via-orange-50 to-yellow-100">
@@ -178,7 +216,7 @@ const UludagParkMap = () => {
           <h2 className="text-xl font-bold text-gray-800 mb-2">Bağlantı Hatası</h2>
           <p className="text-red-600 mb-4 text-sm">{error}</p>
           <div className="space-y-2">
-            <button 
+            <button
               onClick={handleRetry}
               className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
             >
@@ -204,25 +242,18 @@ const UludagParkMap = () => {
           className="w-full h-full"
           zoomControl={false}
         >
-          {/* Harita Katmanları */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          
-          {/* Satellite View seçeneği */}
-          {/* <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-          /> */}
 
-          {/* API'den gelen rotaları haritada göster */}
+          {/* Rotalar */}
           {Object.entries(groupedRoutes).map(([type, routeGroup]) => {
             if (activeLayer !== 'all' && activeLayer !== type) return null;
-            
+
             return routeGroup.paths.map((path) => {
               if (!path.coordinates || path.coordinates.length === 0) return null;
-              
+
               return (
                 <Polyline
                   key={`route-${path.id}`}
@@ -244,14 +275,16 @@ const UludagParkMap = () => {
             });
           })}
 
-          {/* Özel etkinlik noktaları */}
+          {/* Özel Etkinlikler */}
           {specialEvents.map((event) => (
             <Marker key={event.id} position={event.coordinates}>
               <Popup>
                 <div className="p-2">
                   <h3 className="font-bold text-gray-800">{event.description}</h3>
                   <p className="text-sm text-gray-600">{event.location}</p>
-                  <p className="text-xs text-gray-500">{event.date} {event.time}</p>
+                  <p className="text-xs text-gray-500">
+                    {event.date} {event.time}
+                  </p>
                 </div>
               </Popup>
             </Marker>
@@ -271,14 +304,15 @@ const UludagParkMap = () => {
       </div>
 
       {/* Sol Sidebar */}
-      <div className={`absolute left-0 top-0 h-full bg-white shadow-2xl z-[1000] transition-all duration-300 ease-in-out ${
-        sidebarOpen ? 'w-96' : 'w-0'
-      } overflow-hidden`}>
+      <div
+        className={`absolute left-0 top-0 h-full bg-white shadow-2xl z-[1000] transition-all duration-300 ease-in-out ${
+          sidebarOpen ? 'w-96' : 'w-0'
+        } overflow-hidden`}
+      >
         <div className="p-6 h-full overflow-y-auto">
-          {/* Başlık */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Uludağ Keşfi</h2>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -297,7 +331,7 @@ const UludagParkMap = () => {
 
           {/* Arama */}
           <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Konum ara..."
@@ -307,20 +341,23 @@ const UludagParkMap = () => {
             />
           </div>
 
-          {/* Detaylı Rota Listesi */}
+          {/* Rota Listesi */}
           {Object.entries(groupedRoutes).map(([type, routeGroup]) => {
             if (activeLayer !== 'all' && activeLayer !== type) return null;
-            
+
             return (
               <div key={type} className="mb-6">
                 <h4 className="font-semibold text-gray-700 flex items-center gap-2 mb-3">
                   <MapPin className="w-4 h-4" />
                   {routeGroup.name}
                 </h4>
-                
+
                 <div className="space-y-3">
                   {routeGroup.paths.map((path) => (
-                    <div key={path.id} className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-pointer border border-gray-100 hover:border-gray-200">
+                    <div
+                      key={path.id}
+                      className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-pointer border border-gray-100 hover:border-gray-200"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <h5 className="font-medium text-gray-800">{path.name}</h5>
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
@@ -341,9 +378,7 @@ const UludagParkMap = () => {
                             ✓ Haritada görünüyor ({path.coordinates.length} nokta)
                           </div>
                         ) : (
-                          <div className="text-xs text-red-600">
-                            ⚠ Geometrik veri eksik
-                          </div>
+                          <div className="text-xs text-red-600">⚠ Geometrik veri eksik</div>
                         )}
                       </div>
                     </div>
@@ -355,9 +390,14 @@ const UludagParkMap = () => {
 
           {/* Özel Etkinlikler */}
           <div className="space-y-3 mb-8">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Özel Etkinlikler</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
+              Özel Etkinlikler
+            </h3>
             {specialEvents.map((event) => (
-              <div key={event.id} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
+              <div
+                key={event.id}
+                className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100"
+              >
                 <div className="flex items-start gap-3">
                   {event.type === 'eclipse' ? (
                     <Clock className="w-5 h-5 text-yellow-600 mt-0.5" />
@@ -378,7 +418,7 @@ const UludagParkMap = () => {
         </div>
       </div>
 
-      {/* Menu Toggle Button */}
+      {/* Menü Toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="absolute top-6 left-6 z-[1001] bg-white shadow-lg rounded-xl p-3 hover:shadow-xl transition-all duration-200 hover:scale-105"
@@ -386,7 +426,7 @@ const UludagParkMap = () => {
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
 
-      {/* Rota Kontrolleri */}
+      {/* Rota Katman Kontrolleri */}
       <div className="absolute top-6 left-20 z-[1000] flex gap-2 flex-wrap">
         {Object.entries(groupedRoutes).map(([key, route]) => {
           const IconComponent = route.icon;
@@ -395,8 +435,8 @@ const UludagParkMap = () => {
               key={key}
               onClick={() => setActiveLayer(activeLayer === key ? 'all' : key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 ${
-                activeLayer === key 
-                  ? 'bg-white text-gray-800 ring-2 ring-opacity-50' 
+                activeLayer === key
+                  ? 'bg-white text-gray-800 ring-2 ring-opacity-50'
                   : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
               }`}
               style={activeLayer === key ? { ringColor: route.color } : {}}
@@ -409,12 +449,12 @@ const UludagParkMap = () => {
             </button>
           );
         })}
-        
+
         <button
           onClick={() => setActiveLayer('all')}
           className={`px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl hover:scale-105 ${
-            activeLayer === 'all' 
-              ? 'bg-gradient-to-r from-green-500 to-blue-600 text-white' 
+            activeLayer === 'all'
+              ? 'bg-gradient-to-r from-green-500 to-blue-600 text-white'
               : 'bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white'
           }`}
         >
@@ -433,7 +473,7 @@ const UludagParkMap = () => {
 
         {userMenuOpen && (
           <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            {/* User menu content */}
+            {/* user menu içeriği buraya */}
           </div>
         )}
       </div>
@@ -444,17 +484,17 @@ const UludagParkMap = () => {
       </button>
 
       {/* Alt Bilgi Paneli */}
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 max-w-md">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 max-w-md">
         <div className="text-center">
           <h4 className="font-semibold text-gray-800 mb-1">Uludağ Milli Parkı</h4>
-          <p className="text-sm text-gray-600">
-            API'den {rotalar.length} rota yüklendi
-          </p>
+          <p className="text-sm text-gray-600">API'den {rotalar.length} rota yüklendi</p>
           <div className="flex justify-center gap-4 mt-3">
             {Object.entries(groupedRoutes).map(([type, route]) => (
               <div key={type} className="flex items-center gap-1 text-xs text-gray-500">
                 <div className="w-3 h-0.5" style={{ backgroundColor: route.color }}></div>
-                <span>{route.paths.length} {type}</span>
+                <span>
+                  {route.paths.length} {type}
+                </span>
               </div>
             ))}
           </div>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
 using RoutesService.Domain.Entities;
@@ -38,7 +39,6 @@ namespace RoutesService.API.Controllers
         }
 
         // PUT: api/YetkiAlaniTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutYetkiAlaniTanim(int id, YetkiAlaniTanim yetkiAlaniTanim)
         {
@@ -69,7 +69,6 @@ namespace RoutesService.API.Controllers
         }
 
         // POST: api/YetkiAlaniTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<YetkiAlaniTanim>> PostYetkiAlaniTanim(YetkiAlaniTanim yetkiAlaniTanim)
         {

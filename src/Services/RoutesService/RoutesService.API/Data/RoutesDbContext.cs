@@ -39,7 +39,6 @@ namespace RoutesService.API.Data
                 }
             }
 
-            // Composite key ve ilişkiler
             modelBuilder.Entity<KullaniciRolleri>()
                .HasKey(kr => kr.Id); 
 

@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
@@ -15,94 +14,82 @@ namespace RoutesService.API.Controllers
     public class RotaYorumTanimController : ControllerBase
     {
         private readonly RoutesDbContext _context;
+        private readonly IMapper _mapper;
 
-        public RotaYorumTanimController(RoutesDbContext context)
+        public RotaYorumTanimController(RoutesDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/RotaYorumTanim
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaYorumTanim>>> GetRotaYorumlar()
-        {
-            return await _context.RotaYorumlar.ToListAsync();
-        }
+        public async Task<IEnumerable<RotaYorumTanimListDto>> GetRotaYorumlar()
+            => await _context.RotaYorumlar
+                .AsNoTracking()
+                .ProjectTo<RotaYorumTanimListDto>(_mapper.ConfigurationProvider)
+                .ToListAsync();
 
         // GET: api/RotaYorumTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaYorumTanim>> GetRotaYorumTanim(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<RotaYorumTanimDetailDto>> GetRotaYorumTanim(int id)
         {
-            var rotaYorumTanim = await _context.RotaYorumlar.FindAsync(id);
+            var dto = await _context.RotaYorumlar
+                .AsNoTracking()
+                .Where(x => x.Id == id)
+                .ProjectTo<RotaYorumTanimDetailDto>(_mapper.ConfigurationProvider)
+                .FirstOrDefaultAsync();
 
-            if (rotaYorumTanim == null)
-            {
-                return NotFound();
-            }
-
-            return rotaYorumTanim;
-        }
-
-        // PUT: api/RotaYorumTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaYorumTanim(int id, RotaYorumTanim rotaYorumTanim)
-        {
-            if (id != rotaYorumTanim.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(rotaYorumTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaYorumTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            if (dto is null) return NotFound();
+            return dto;
         }
 
         // POST: api/RotaYorumTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<RotaYorumTanim>> PostRotaYorumTanim(RotaYorumTanim rotaYorumTanim)
+        public async Task<ActionResult<RotaYorumTanimDetailDto>> PostRotaYorumTanim(RotaYorumTanimCreateDto dto)
         {
-            _context.RotaYorumlar.Add(rotaYorumTanim);
+            // Basit sunucu doğrulamaları (opsiyonel ama faydalı)
+            if (dto.Puan is < 1 or > 5)
+                return BadRequest("Puan 1 ile 5 arasında olmalıdır.");
+            if (dto.Yorum is { Length: > 500 })
+                return BadRequest("Yorum en fazla 500 karakter olabilir.");
+
+            var ent = _mapper.Map<RotaYorumTanim>(dto);
+            _context.RotaYorumlar.Add(ent);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetRotaYorumTanim", new { id = rotaYorumTanim.Id }, rotaYorumTanim);
+            var detail = _mapper.Map<RotaYorumTanimDetailDto>(ent);
+            return CreatedAtAction(nameof(GetRotaYorumTanim), new { id = ent.Id }, detail);
         }
 
-        // DELETE: api/RotaYorumTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaYorumTanim(int id)
+        // PUT: api/RotaYorumTanim/5
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> PutRotaYorumTanim(int id, RotaYorumTanimUpdateDto dto)
         {
-            var rotaYorumTanim = await _context.RotaYorumlar.FindAsync(id);
-            if (rotaYorumTanim == null)
-            {
-                return NotFound();
-            }
+            // Opsiyonel doğrulama
+            if (dto.Puan is < 1 or > 5)
+                return BadRequest("Puan 1 ile 5 arasında olmalıdır.");
+            if (dto.Yorum is { Length: > 500 })
+                return BadRequest("Yorum en fazla 500 karakter olabilir.");
 
-            _context.RotaYorumlar.Remove(rotaYorumTanim);
+            var ent = await _context.RotaYorumlar.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
+
+            _mapper.Map(dto, ent);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        private bool RotaYorumTanimExists(int id)
+        // DELETE: api/RotaYorumTanim/5
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteRotaYorumTanim(int id)
         {
-            return _context.RotaYorumlar.Any(e => e.Id == id);
+            var ent = await _context.RotaYorumlar.FindAsync(id);
+            if (ent is null) return NotFound();
+
+            _context.RotaYorumlar.Remove(ent);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

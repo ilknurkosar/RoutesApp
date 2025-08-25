@@ -2,10 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
@@ -15,94 +19,70 @@ namespace RoutesService.API.Controllers
     public class RotaKategoriTanimController : ControllerBase
     {
         private readonly RoutesDbContext _context;
+        private readonly IMapper _mapper;
 
-        public RotaKategoriTanimController(RoutesDbContext context)
+        public RotaKategoriTanimController(RoutesDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/RotaKategoriTanim
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaKategoriTanim>>> GetRotaKategoriler()
-        {
-            return await _context.RotaKategoriler.ToListAsync();
-        }
+        public async Task<IEnumerable<RotaKategoriTanimListDto>> GetRotaKategoriler()
+           => await _context.RotaKategoriler
+               .AsNoTracking()
+               .ProjectTo<RotaKategoriTanimListDto>(_mapper.ConfigurationProvider)
+               .ToListAsync();
+
 
         // GET: api/RotaKategoriTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaKategoriTanim>> GetRotaKategoriTanim(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<RotaKategoriTanimDetailDto>> GetRotaKategoriTanim(int id)
         {
-            var rotaKategoriTanim = await _context.RotaKategoriler.FindAsync(id);
-
-            if (rotaKategoriTanim == null)
-            {
-                return NotFound();
-            }
-
-            return rotaKategoriTanim;
+            var ent = await _context.RotaKategoriler.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
+            return _mapper.Map<RotaKategoriTanimDetailDto>(ent);
         }
 
-        // PUT: api/RotaKategoriTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaKategoriTanim(int id, RotaKategoriTanim rotaKategoriTanim)
-        {
-            if (id != rotaKategoriTanim.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(rotaKategoriTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaKategoriTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
 
         // POST: api/RotaKategoriTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<RotaKategoriTanim>> PostRotaKategoriTanim(RotaKategoriTanim rotaKategoriTanim)
+        public async Task<ActionResult<RotaKategoriTanimDetailDto>> PostRotaKategoriTanim(RotaKategoriTanimCreateDto dto)
         {
-            _context.RotaKategoriler.Add(rotaKategoriTanim);
+            var ent = _mapper.Map<RotaKategoriTanim>(dto);
+            _context.RotaKategoriler.Add(ent);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetRotaKategoriTanim", new { id = rotaKategoriTanim.Id }, rotaKategoriTanim);
+            var detail = _mapper.Map<RotaKategoriTanimDetailDto>(ent);
+            return CreatedAtAction(nameof(GetRotaKategoriTanim), new { id = ent.Id }, detail);
         }
 
-        // DELETE: api/RotaKategoriTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaKategoriTanim(int id)
+
+        // PUT: api/RotaKategoriTanim/5
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> PutRotaKategoriTanim(int id, RotaKategoriTanimUpdateDto dto)
         {
-            var rotaKategoriTanim = await _context.RotaKategoriler.FindAsync(id);
-            if (rotaKategoriTanim == null)
-            {
-                return NotFound();
-            }
+            var ent = await _context.RotaKategoriler.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent is null) return NotFound();
 
-            _context.RotaKategoriler.Remove(rotaKategoriTanim);
+            _mapper.Map(dto, ent);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        private bool RotaKategoriTanimExists(int id)
+
+
+        // DELETE: api/RotaKategoriTanim/5
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteRotaKategoriTanim(int id)
         {
-            return _context.RotaKategoriler.Any(e => e.Id == id);
+            var ent = await _context.RotaKategoriler.FindAsync(id);
+            if (ent is null) return NotFound();
+
+            _context.RotaKategoriler.Remove(ent);
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

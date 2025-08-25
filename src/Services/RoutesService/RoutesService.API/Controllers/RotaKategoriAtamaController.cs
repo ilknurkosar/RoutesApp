@@ -1,99 +1,91 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+namespace RoutesService.API.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class RotaKategoriAtamaController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RotaKategoriAtamaController : ControllerBase
+    private readonly RoutesDbContext _db;
+    private readonly IMapper _mapper;
+
+    public RotaKategoriAtamaController(RoutesDbContext db, IMapper mapper)
     {
-        private readonly RoutesDbContext _context;
+        _db = db;
+        _mapper = mapper;
+    }
 
-        public RotaKategoriAtamaController(RoutesDbContext context)
-        {
-            _context = context;
-        }
+    // GET: api/RotaKategoriAtama
+    [HttpGet]
+    public async Task<IEnumerable<RotaKategoriAtamaListDto>> Get()
+        => await _db.RotaKategoriAtama
+            .AsNoTracking()
+            .Include(rk => rk.Rota)
+            .Include(rk => rk.Kategori)
+            .ProjectTo<RotaKategoriAtamaListDto>(_mapper.ConfigurationProvider)
+            .ToListAsync();
 
-        // GET: api/RotaKategoriAtama
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<RotaKategoriAtama>>> GetRotaKategoriAtama()
-        {
-            return await _context.RotaKategoriAtama
-                .Include(rk => rk.Rota)
-                .Include(rk => rk.Kategori)
-                .ToListAsync();
-        }
+    // GET: api/RotaKategoriAtama/5
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<RotaKategoriAtamaDetailDto>> Get(int id)
+    {
+        var ent = await _db.RotaKategoriAtama
+            .AsNoTracking()
+            .Include(rk => rk.Rota)
+            .Include(rk => rk.Kategori)
+            .FirstOrDefaultAsync(rk => rk.Id == id);
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<RotaKategoriAtama>> GetRotaKategoriAtama(int id)
-        {
-            var rotaKategoriAtama = await _context.RotaKategoriAtama
-                .Include(rk => rk.Rota)
-                .Include(rk => rk.Kategori)
-                .FirstOrDefaultAsync(rk => rk.Id == id);
+        if (ent is null) return NotFound();
+        return _mapper.Map<RotaKategoriAtamaDetailDto>(ent);
+    }
 
-            if (rotaKategoriAtama == null)
-                return NotFound();
+    // POST: api/RotaKategoriAtama
+    [HttpPost]
+    public async Task<ActionResult<RotaKategoriAtamaDetailDto>> Create(RotaKategoriAtamaCreateDto dto)
+    {
+        var ent = _mapper.Map<RotaKategoriAtama>(dto);
 
-            return rotaKategoriAtama;
-        }
+        _db.RotaKategoriAtama.Add(ent);
+        await _db.SaveChangesAsync();
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRotaKategoriAtama(int id, RotaKategoriAtama rotaKategoriAtama)
-        {
-            if (id != rotaKategoriAtama.Id)
-                return BadRequest();
+        var detail = await _db.RotaKategoriAtama
+            .Include(rk => rk.Rota)
+            .Include(rk => rk.Kategori)
+            .FirstAsync(rk => rk.Id == ent.Id);
 
-            _context.Entry(rotaKategoriAtama).State = EntityState.Modified;
+        return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<RotaKategoriAtamaDetailDto>(detail));
+    }
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RotaKategoriAtamaExists(id))
-                    return NotFound();
-                else
-                    throw;
-            }
+    // PUT: api/RotaKategoriAtama/5
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, RotaKategoriAtamaUpdateDto dto)
+    {
+        var ent = await _db.RotaKategoriAtama.FindAsync(id);
+        if (ent is null) return NotFound();
 
-            return NoContent();
-        }
+        _mapper.Map(dto, ent);
+        await _db.SaveChangesAsync();
 
-        [HttpPost]
-        public async Task<ActionResult<RotaKategoriAtama>> PostRotaKategoriAtama(RotaKategoriAtama rotaKategoriAtama)
-        {
-            _context.RotaKategoriAtama.Add(rotaKategoriAtama);
-            await _context.SaveChangesAsync();
+        return NoContent();
+    }
 
-            return CreatedAtAction("GetRotaKategoriAtama", new { id = rotaKategoriAtama.Id }, rotaKategoriAtama);
-        }
+    // DELETE: api/RotaKategoriAtama/5
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var ent = await _db.RotaKategoriAtama.FindAsync(id);
+        if (ent is null) return NotFound();
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRotaKategoriAtama(int id)
-        {
-            var rotaKategoriAtama = await _context.RotaKategoriAtama.FindAsync(id);
-            if (rotaKategoriAtama == null)
-                return NotFound();
+        _db.RotaKategoriAtama.Remove(ent);
+        await _db.SaveChangesAsync();
 
-            _context.RotaKategoriAtama.Remove(rotaKategoriAtama);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool RotaKategoriAtamaExists(int id)
-        {
-            return _context.RotaKategoriAtama.Any(e => e.Id == id);
-
-        }
+        return NoContent();
     }
 }

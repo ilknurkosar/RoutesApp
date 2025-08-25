@@ -11,6 +11,7 @@ namespace RoutesService.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RotaYorumTanimController : ControllerBase
     {
         private readonly RoutesDbContext _context;
@@ -22,7 +23,6 @@ namespace RoutesService.API.Controllers
             _mapper = mapper;
         }
 
-        // GET: api/RotaYorumTanim
         [HttpGet]
         public async Task<IEnumerable<RotaYorumTanimListDto>> GetRotaYorumlar()
             => await _context.RotaYorumlar

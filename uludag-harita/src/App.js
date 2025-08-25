@@ -19,7 +19,6 @@ L.Icon.Default.mergeOptions({
 
 // Uludağ koordinatları (merkez)
 const ULUDAG_CENTER = [40.0917, 29.0750];
-const DEFAULT_ZOOM = 13;
 
 // WKT → Leaflet [lat, lon] listesi
 const parseWktToLatLngs = (wkt) => {
@@ -115,7 +114,6 @@ const UludagParkMap = () => {
         setLoading(false);
       }
     };
-
     fetchRotalar();
   }, []);
 
@@ -291,17 +289,42 @@ const UludagParkMap = () => {
           ))}
         </MapContainer>
 
-        {/* Harita Başlığı */}
-        <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-md">
+        {/* Hava Durumu Widget */}
+        <div className="absolute top-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg">
           <div className="flex items-center gap-2">
-            <Mountain className="w-5 h-5 text-green-600" />
-            <h3 className="font-bold text-gray-800">Uludağ Milli Parkı</h3>
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-              {rotalar.length} rota
-            </span>
+            <Sun className="w-5 h-5 text-yellow-500" />
+            <div>
+              <div className="font-bold text-gray-800 text-lg">{weather.temp}°</div>
+              <div className="text-xs text-gray-600">Güneşli</div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Login/Register Popup */}
+      {(showLogin || showRegister) && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {showLogin ? 'Giriş Yap' : 'Kayıt Ol'}
+              </h2>
+              <button 
+                onClick={() => {setShowLogin(false); setShowRegister(false);}}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {showLogin ? (
+              <LoginForm onLogin={handleLogin} onSwitchToRegister={() => {setShowLogin(false); setShowRegister(true);}} />
+            ) : (
+              <RegisterForm onRegister={handleRegister} onSwitchToLogin={() => {setShowRegister(false); setShowLogin(true);}} />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Sol Sidebar */}
       <div
@@ -320,21 +343,12 @@ const UludagParkMap = () => {
             </button>
           </div>
 
-          {/* API Durumu */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center gap-2 text-green-700">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">API Bağlantısı Aktif</span>
-            </div>
-            <p className="text-xs text-green-600 mt-1">{rotalar.length} rota yüklendi</p>
-          </div>
-
           {/* Arama */}
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Konum ara..."
+              placeholder="Rota ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
@@ -364,18 +378,37 @@ const UludagParkMap = () => {
                           ID: {path.id}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Mesafe:</span>
-                          <span className="font-medium">{path.distance}</span>
+                      
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-gray-800">{rota.adi}</h4>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(rota.id);
+                            }}
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                          >
+                            <Heart 
+                              className={`w-4 h-4 ${
+                                favorites.includes(rota.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'
+                              }`} 
+                            />
+                          </button>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Süre:</span>
-                          <span className="font-medium">{path.duration}</span>
-                        </div>
-                        {path.coordinates ? (
-                          <div className="text-xs text-green-600">
-                            ✓ Haritada görünüyor ({path.coordinates.length} nokta)
+                        
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Mesafe:</span>
+                            <span className="font-medium">{rota.mesafe} km</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Süre:</span>
+                            <span className="font-medium">
+                              {rota.tahminiSureDakika >= 60 ? 
+                                `${Math.floor(rota.tahminiSureDakika / 60)}s ${rota.tahminiSureDakika % 60}dk` : 
+                                `${rota.tahminiSureDakika}dk`}
+                            </span>
                           </div>
                         ) : (
                           <div className="text-xs text-red-600">⚠ Geometrik veri eksik</div>
@@ -411,9 +444,8 @@ const UludagParkMap = () => {
                       {event.date} {event.time && `- ${event.time}`}
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
         </div>
       </div>
@@ -421,7 +453,7 @@ const UludagParkMap = () => {
       {/* Menü Toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute top-6 left-6 z-[1001] bg-white shadow-lg rounded-xl p-3 hover:shadow-xl transition-all duration-200 hover:scale-105"
+        className="absolute top-4 left-4 z-[1001] bg-white shadow-lg rounded-xl p-3 hover:shadow-xl transition-all duration-200 hover:scale-105"
       >
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
@@ -461,14 +493,103 @@ const UludagParkMap = () => {
           Tümü ({rotalar.length})
         </button>
       </div>
+    </form>
+  );
+};
 
-      {/* Kullanıcı Menüsü */}
-      <div className="absolute top-6 right-6 z-[1001]">
+// Register Form Component
+const RegisterForm = ({ onRegister, onSwitchToLogin }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert('Şifreler eşleşmiyor!');
+      return;
+    }
+    onRegister(formData);
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Ad Soyad</label>
+        <div className="relative">
+          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            placeholder="Adınız Soyadınız"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">E-posta</label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            placeholder="ornek@email.com"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Şifre</label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={formData.password}
+            onChange={(e) => handleInputChange('password', e.target.value)}
+            className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+            placeholder="Güçlü bir şifre"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium transition-colors"
+      >
+        Kayıt Ol
+      </button>
+
+      <div className="text-center">
+        <span className="text-gray-600">Zaten hesabınız var mı? </span>
         <button
-          onClick={() => setUserMenuOpen(!userMenuOpen)}
-          className="bg-white shadow-lg rounded-full p-3 hover:shadow-xl transition-all duration-200 hover:scale-105"
+          type="button"
+          onClick={onSwitchToLogin}
+          className="text-green-600 hover:text-green-700 font-medium"
         >
-          <User className="w-6 h-6 text-gray-700" />
+          Giriş yapın
         </button>
 
         {userMenuOpen && (
@@ -477,10 +598,23 @@ const UludagParkMap = () => {
           </div>
         )}
       </div>
+    </form>
+  );
+};
 
-      {/* Konum Butonu */}
-      <button className="absolute bottom-20 right-6 z-[1000] bg-white shadow-lg rounded-full p-4 hover:shadow-xl transition-all duration-200 hover:scale-105">
-        <Navigation className="w-6 h-6 text-gray-700" />
+// User Menu Component
+const UserMenu = ({ user, onLogout }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="bg-white shadow-lg rounded-full p-3 hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center gap-2"
+      >
+        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-medium">
+          {user.name.charAt(0)}
+        </div>
       </button>
 
       {/* Alt Bilgi Paneli */}
@@ -496,12 +630,37 @@ const UludagParkMap = () => {
                   {route.paths.length} {type}
                 </span>
               </div>
-            ))}
+            </div>
+          </div>
+
+          <div className="p-2">
+            <MenuButton icon={User} text="Profil" />
+            <MenuButton icon={Bookmark} text="Favoriler" />
+            <MenuButton icon={History} text="Rotalarım" />
+            <MenuButton icon={Settings} text="Ayarlar" />
+            
+            <div className="border-t border-gray-100 mt-2 pt-2">
+              <button
+                onClick={onLogout}
+                className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+                <span>Çıkış Yap</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+
+// Menu Button Component
+const MenuButton = ({ icon: Icon, text }) => (
+  <button className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+    <Icon className="w-5 h-5" />
+    <span>{text}</span>
+  </button>
+);
 
 export default UludagParkMap;

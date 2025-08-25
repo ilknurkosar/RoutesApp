@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
@@ -15,95 +16,75 @@ namespace RoutesService.API.Controllers
     [ApiController]
     public class IzinController : ControllerBase
     {
-        private readonly RoutesDbContext _context;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
-        public IzinController(RoutesDbContext context)
+        public IzinController(RoutesDbContext db, IMapper mapper)
         {
-            _context = context;
+            _db = db;
+            _mapper = mapper;
         }
 
         // GET: api/Izin
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Izin>>> GetIzinler()
+        [AllowAnonymous]
+        public async Task<IEnumerable<IzinListDto>> Get()
         {
-            return await _context.Izinler.ToListAsync();
+            return await _db.Izinler
+                            .AsNoTracking()
+                            .ProjectTo<IzinListDto>(_mapper.ConfigurationProvider)
+                            .ToListAsync();
         }
 
         // GET: api/Izin/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Izin>> GetIzin(int id)
+        [HttpGet("{id:int}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IzinDetailDto>> Get(int id)
         {
-            var izin = await _context.Izinler.FindAsync(id);
-
-            if (izin == null)
-            {
-                return NotFound();
-            }
-
-            return izin;
-        }
-
-        // PUT: api/Izin/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutIzin(int id, Izin izin)
-        {
-            if (id != izin.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(izin).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!IzinExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            var izin = await _db.Izinler.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            if (izin == null) return NotFound();
+            return _mapper.Map<IzinDetailDto>(izin);
         }
 
         // POST: api/Izin
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Izin>> PostIzin(Izin izin)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<IzinDetailDto>> Create(IzinCreateDto dto)
         {
-            _context.Izinler.Add(izin);
-            await _context.SaveChangesAsync();
+            var izin = _mapper.Map<Izin>(dto);
+            _db.Izinler.Add(izin);
+            await _db.SaveChangesAsync();
 
-            return CreatedAtAction("GetIzin", new { id = izin.Id }, izin);
+            var izinDetail = _mapper.Map<IzinDetailDto>(izin);
+            return CreatedAtAction(nameof(Get), new { id = izin.Id }, izinDetail);
         }
 
-        // DELETE: api/Izin/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteIzin(int id)
+        // PUT: api/Izin/5
+        [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(int id, IzinUpdateDto dto)
         {
-            var izin = await _context.Izinler.FindAsync(id);
-            if (izin == null)
-            {
-                return NotFound();
-            }
+            var izin = await _db.Izinler.FirstOrDefaultAsync(x => x.Id == id);
+            if (izin == null) return NotFound();
 
-            _context.Izinler.Remove(izin);
-            await _context.SaveChangesAsync();
+            _mapper.Map(dto, izin);
+            await _db.SaveChangesAsync();
 
             return NoContent();
         }
 
-        private bool IzinExists(int id)
+        // DELETE: api/Izin/5
+        [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
         {
-            return _context.Izinler.Any(e => e.Id == id);
+            var izin = await _db.Izinler.FindAsync(id);
+            if (izin == null) return NotFound();
+
+            _db.Izinler.Remove(izin);
+            await _db.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }

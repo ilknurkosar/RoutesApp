@@ -8,7 +8,9 @@ using RoutesService.API.Data;
 using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+[Route("api/[controller]")]
+[ApiController]
+public class RotaResimTanimController : ControllerBase
 {
     [Route("api/[controller]")]
     [ApiController]

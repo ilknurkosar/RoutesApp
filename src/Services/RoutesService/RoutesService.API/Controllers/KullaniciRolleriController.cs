@@ -1,21 +1,29 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class KullaniciRolleriController : ControllerBase
     {
         private readonly RoutesDbContext _db;
         private readonly IMapper _mapper;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
+        public KullaniciRolleriController(RoutesDbContext db, IMapper mapper)
         public KullaniciRolleriController(RoutesDbContext db, IMapper mapper)
         {
             _db = db; _mapper = mapper;

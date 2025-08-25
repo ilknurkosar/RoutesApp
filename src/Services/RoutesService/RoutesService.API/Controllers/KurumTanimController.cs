@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
 namespace RoutesService.API.Controllers
@@ -10,95 +13,69 @@ namespace RoutesService.API.Controllers
     [ApiController]
     public class KurumTanimController : ControllerBase
     {
-        private readonly RoutesDbContext _context;
+        private readonly RoutesDbContext _db;
+        private readonly IMapper _mapper;
 
-        public KurumTanimController(RoutesDbContext context)
+        public KurumTanimController(RoutesDbContext db, IMapper mapper)
         {
-            _context = context;
+            _db = db;
+            _mapper = mapper;
         }
 
-        // GET: api/KurumTanim
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<KurumTanim>>> GetKurumlar()
+        [AllowAnonymous]
+        public async Task<IEnumerable<KurumTanimListDto>> Get()
         {
-            return await _context.Kurumlar.ToListAsync();
+            return await _db.Kurumlar
+                            .AsNoTracking()
+                            .ProjectTo<KurumTanimListDto>(_mapper.ConfigurationProvider)
+                            .ToListAsync();
         }
 
-        // GET: api/KurumTanim/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<KurumTanim>> GetKurumTanim(int id)
+        [HttpGet("{id:int}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<KurumTanimDetailDto>> Get(int id)
         {
-            var kurumTanim = await _context.Kurumlar.FindAsync(id);
-
-            if (kurumTanim == null)
-            {
-                return NotFound();
-            }
-
-            return kurumTanim;
+            var ent = await _db.Kurumlar
+                               .AsNoTracking()
+                               .FirstOrDefaultAsync(x => x.Id == id);
+            if (ent == null) return NotFound();
+            return _mapper.Map<KurumTanimDetailDto>(ent);
         }
 
-        // PUT: api/KurumTanim/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutKurumTanim(int id, KurumTanim kurumTanim)
-        {
-            if (id != kurumTanim.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(kurumTanim).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!KurumTanimExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/KurumTanim
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<KurumTanim>> PostKurumTanim(KurumTanim kurumTanim)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<KurumTanimDetailDto>> Create(KurumTanimCreateDto dto)
         {
-            _context.Kurumlar.Add(kurumTanim);
-            await _context.SaveChangesAsync();
+            var ent = _mapper.Map<KurumTanim>(dto);
+            _db.Kurumlar.Add(ent);
+            await _db.SaveChangesAsync();
 
-            return CreatedAtAction("GetKurumTanim", new { id = kurumTanim.Id }, kurumTanim);
+            return CreatedAtAction(nameof(Get), new { id = ent.Id }, _mapper.Map<KurumTanimDetailDto>(ent));
         }
 
-        // DELETE: api/KurumTanim/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteKurumTanim(int id)
+        [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(int id, KurumTanimUpdateDto dto)
         {
-            var kurumTanim = await _context.Kurumlar.FindAsync(id);
-            if (kurumTanim == null)
-            {
-                return NotFound();
-            }
+            var ent = await _db.Kurumlar.FirstOrDefaultAsync(x => x.Id == id);
+            if (ent == null) return NotFound();
 
-            _context.Kurumlar.Remove(kurumTanim);
-            await _context.SaveChangesAsync();
-
+            _mapper.Map(dto, ent);
+            await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        private bool KurumTanimExists(int id)
+        [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Delete(int id)
         {
-            return _context.Kurumlar.Any(e => e.Id == id);
+            var ent = await _db.Kurumlar.FindAsync(id);
+            if (ent == null) return NotFound();
+
+            _db.Kurumlar.Remove(ent);
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
     }
 }

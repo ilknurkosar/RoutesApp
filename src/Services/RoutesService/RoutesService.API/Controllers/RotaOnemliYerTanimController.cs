@@ -24,7 +24,6 @@ namespace RoutesService.API.Controllers
             _mapper = mapper;
         }
 
-        // GET: api/RotaOnemliYerTanim
         [HttpGet]
         public async Task<IEnumerable<RotaOnemliYerTanimListDto>> GetRotaOnemliYerler()
              => await _context.RotaOnemliYerler

@@ -8,11 +8,14 @@ using RoutesService.API.Data;
 using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
-namespace RoutesService.API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class RotaTanimController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RotaTanimController : ControllerBase
+    private readonly RoutesDbContext _db;
+    private readonly IMapper _mapper;
+
+    public RotaTanimController(RoutesDbContext db, IMapper mapper)
     {
         private readonly RoutesDbContext _db;
         private readonly IMapper _mapper;

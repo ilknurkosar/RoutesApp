@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutesService.API.Data;
+using RoutesService.API.DTOs;
 using RoutesService.API.DTOs;
 using RoutesService.Domain.Entities;
 
@@ -27,7 +28,6 @@ namespace RoutesService.API.Controllers
             _mapper = mapper;
         }
 
-        // GET: api/RotaKategoriTanim
         [HttpGet]
         public async Task<IEnumerable<RotaKategoriTanimListDto>> GetRotaKategoriler()
            => await _context.RotaKategoriler
